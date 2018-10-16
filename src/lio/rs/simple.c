@@ -60,7 +60,7 @@
 
 static lio_rs_simple_priv_t rss_default_options = {
     .section = "rs_simple",
-    .fname = "/etc/lio/rid-client.cfg",
+    .fname = "/etc/lio/client.rid",
     .dynamic_mapping = 1,
     .check_interval = 60,
     .check_timeout = 0,
