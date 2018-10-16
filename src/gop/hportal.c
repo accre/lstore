@@ -280,6 +280,8 @@ void wait_for_shutdown(gop_portal_context_t *hpc, int n)
 {
     int nclosed;
 
+    if (n == 0) return;
+
     nclosed = process_incoming(hpc);
     while (nclosed < n) {
         nclosed += process_incoming(hpc);
@@ -362,7 +364,7 @@ double determine_bandwidths(gop_portal_context_t *hpc, int *n_used, hportal_t **
     total_avg_bw = total_avg_bw / n;  //** Normalize the BW
     if (hp_min) *hp_min = array[0];
     if (hp_median) *hp_median = array[i];
-    if (hp_max) *hp_max = array[n-1];
+    if (hp_max) *hp_max = (n>0) ? array[n-1] : NULL;
     if (n_used) *n_used = n;
 
     free(array);  //** Clean up
@@ -733,9 +735,12 @@ int process_incoming(gop_portal_context_t *hpc)
     int nclosed;
     hpc_cmd_t cmd;
     hportal_t *hp;
+    apr_time_t dt;
+
+    dt = apr_time_from_sec(10);  //** We wait for the first round
 
     nclosed = 0;
-    while (!tbx_que_get(hpc->que, &cmd, 0)) {
+    while (!tbx_que_get(hpc->que, &cmd, dt)) {
         switch (cmd.cmd) {
             case HPC_CMD_SHUTDOWN:
                 hpc->finished = 1;
@@ -788,6 +793,8 @@ log_printf(15, "Got a CONN_CLOSE_REQUEST from hp=%s.  Sending official CONN_CLOS
                 //cmd.hc->hp->dead = 0;
                 break;
         }
+
+        dt = 0;  //** We got a command so no need to wait for any more
     }
     return(nclosed);
 }
