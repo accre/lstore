@@ -459,7 +459,7 @@ wq_op_t *wq_get_task(int fd, int wait)
     wq_op_t *op;
     int n, i, nleft;
 
-    if (wait != 0) {
+    if (wait == 0) {
         pfd.fd = fd;
         pfd.events = POLLIN;
         pfd.revents = 0;
@@ -519,10 +519,10 @@ int wq_fetch_tasks(apr_hash_t *table, int pfd)
 
 
     n = 0;
+    t = wq_get_task(pfd, 1);
     for (;;) {
-        t = wq_get_task(pfd, n);
-        if (t == NULL) return(0);
-        if (t == (void *)1) return(1);  //** Kick out
+        if (t == NULL) break;
+        if (t == (void *)1) return(-(n+1));  //** Kick out
 
         //** Check if we need to add it to the processing list
         if (apr_hash_get(table, &(t->ctx), sizeof(t->ctx)) == NULL) {
@@ -530,9 +530,11 @@ int wq_fetch_tasks(apr_hash_t *table, int pfd)
         }
         tbx_stack_push(t->ctx->wq, t);
         n++;
+
+        t = wq_get_task(pfd, 0);
     }
 
-    return(0);
+    return(n);
 }
 
 //***********************************************************************
@@ -772,9 +774,9 @@ void *wq_backend_thread(apr_thread_t *th, void *data)
     table = apr_hash_make(mpool);
 
     finished = 0;
-    while (finished == 0) {
+    while (finished != -1) {
         finished = wq_fetch_tasks(table, wq->pipe[OP_READ]);
-        wq_process(wq, table, mpool);
+        if (finished != 0) wq_process(wq, table, mpool);
     }
 
     apr_pool_destroy(mpool);
