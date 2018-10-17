@@ -293,7 +293,7 @@ void lio_os_regex_table_destroy(lio_os_regex_table_t *table)
             }
         }
 
-        if (table->n > 0) free(table->regex_entry);
+        free(table->regex_entry);
     }
 
     free(table);
