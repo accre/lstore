@@ -27,9 +27,31 @@
 #include <lio/lio.h>
 #include <lio/os.h>
 
+int repair_mode = 0;
+
+int ask_user() {
+    char ans[20];
+
+    for (;;) {
+        info_printf(lio_ifd, 0, "Repair(y/n/ALL)?");
+        if (fgets(ans, sizeof(ans), stdin) != NULL) {
+            if (strcasecmp("y\n", ans) == 0) {
+                return(1);
+            } else if (strcasecmp("n\n", ans) == 0) {
+                return(0);
+            } else if (strcasecmp("ALL\n", ans) == 0) {
+                repair_mode = 1;  //** Change the global repair mode as well
+                return(1);
+            }
+        }
+    }
+
+    return(0);
+}
+
 int main(int argc, char **argv)
 {
-    int i, start_option, start_index, return_code;
+    int i, start_option, start_index, return_code, doit;
     lio_fsck_repair_t owner_mode, exnode_mode, size_mode;
     lio_fsck_iter_t *it;
     tbx_stdinarray_iter_t *it_args;
@@ -44,9 +66,11 @@ int main(int argc, char **argv)
 
     if (argc < 2) {
         printf("\n");
-        printf("lio_fsck LIO_COMMON_OPTIONS  [-o parent|manual|delete|user valid_user]  [-ex parent|manual|delete] [-s manual|repair] path_1 .. path_N\n");
+        printf("lio_fsck LIO_COMMON_OPTIONS [-y|-n] [-o parent|manual|delete|user valid_user]  [-ex parent|manual|delete] [-s manual|repair] path_1 .. path_N\n");
         lio_print_options(stdout);
         lio_print_path_options(stdout);
+        printf("    -y                 - Automatically correct issues using the options provided. Default is to ask user if no option provided.\n");
+        printf("    -n                 - Don't correct any issues found just print them. Default is to ask user if no option provided.\n");
         printf("    -o                 - How to handle missing system.owner issues.  Default is manual.\n");
         printf("                            parent - Make the object owner the same as the parent directory.\n");
         printf("                            manual - Do nothing.  Leave the owner as missing.\n");
@@ -112,6 +136,12 @@ int main(int argc, char **argv)
                 size_mode = LIO_FSCK_SIZE_REPAIR;
             }
             i++;
+        } else if (strcmp(argv[i], "-y") == 0) {   //** Auto fix issues
+            i++;
+            repair_mode = 1;
+        } else if (strcmp(argv[i], "-n") == 0) {   //** Don't fix anything
+            i++;
+            repair_mode = 2;
         }
     } while ((start_option < i) && (i<argc));
     start_index = i;
@@ -152,15 +182,19 @@ int main(int argc, char **argv)
         it = lio_create_fsck_iter(tuple.lc, tuple.creds, tuple.path, LIO_FSCK_MANUAL, NULL, LIO_FSCK_MANUAL);  //** WE use resolve to clean up so we can see the problem objects
         while ((err = lio_next_fsck(tuple.lc, it, &fname, &ftype)) != LIO_FSCK_FINISHED) {
             info_printf(lio_ifd, 0, "err:%d  type:%d  object:%s\n", err, ftype, fname);
-            if ((owner_mode != LIO_FSCK_MANUAL) || (exnode_mode != LIO_FSCK_MANUAL)) {
-                gop = lio_fsck_gop(tuple.lc, tuple.creds, fname, ftype, owner_mode, owner, exnode_mode);
-                gop_waitany(gop);
-                status = gop_get_status(gop);
-                gop_free(gop, OP_DESTROY);
-                if (status.error_code != OS_FSCK_GOOD) nfailed++;
-                info_printf(lio_ifd, 0, "    resolve:%d  object:%s\n", status.error_code, fname);
+            if (repair_mode < 2) {
+                doit = (repair_mode == 1) ? 1 : ask_user();
+                if (doit == 1) {
+                    if ((owner_mode != LIO_FSCK_MANUAL) || (exnode_mode != LIO_FSCK_MANUAL)) {
+                        gop = lio_fsck_gop(tuple.lc, tuple.creds, fname, ftype, owner_mode, owner, exnode_mode);
+                        gop_waitany(gop);
+                        status = gop_get_status(gop);
+                        gop_free(gop, OP_DESTROY);
+                        if (status.error_code != OS_FSCK_GOOD) nfailed++;
+                        info_printf(lio_ifd, 0, "    resolve:%d  object:%s\n", status.error_code, fname);
+                    }
+                }
             }
-
             free(fname);
             fname = NULL;
             n++;

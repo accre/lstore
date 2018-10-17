@@ -29,10 +29,33 @@
 #include <lio/lio.h>
 #include <lio/os.h>
 
+int repair_mode = 0;
+
+int ask_user() {
+    char ans[20];
+
+    for (;;) {
+        info_printf(lio_ifd, 0, "Repair(y/n/ALL)?");
+        if (fgets(ans, sizeof(ans), stdin) != NULL) {
+            if (strcasecmp("y\n", ans) == 0) {
+                return(1);
+            } else if (strcasecmp("n\n", ans) == 0) {
+                return(0);
+            } else if (strcasecmp("ALL\n", ans) == 0) {
+                repair_mode = 1;  //** Change the global repair mode as well
+                return(1);
+            }
+        }
+    }
+
+    return(0);
+}
+
+
 int main(int argc, char **argv)
 {
     char *path;
-    int i, mode, n, nfailed;
+    int i, mode, n, nfailed, doit, start_option;
     os_fsck_iter_t *it;
     char *fname;
     gop_op_generic_t *gop;
@@ -41,8 +64,10 @@ int main(int argc, char **argv)
 
     if (argc < 2) {
         printf("\n");
-        printf("os_fsck LIO_COMMON_OPTIONS [-fix manual|delete|repair] path\n");
+        printf("os_fsck LIO_COMMON_OPTIONS [-y|-n] [-fix manual|delete|repair] path\n");
         lio_print_options(stdout);
+        printf("    -y    - Automatically correct issues using the options provided. Default is to ask user if no option provided.\n");
+        printf("    -n    - Don't correct any issues found just print them. Default is to ask user if no option provided\n");
         printf("    -fix  - How to handle issues. Default is manual. Can also be delete or repair.\n");
         printf("    path  - Path prefix to use\n");
         printf("\n");
@@ -59,15 +84,24 @@ int main(int argc, char **argv)
     mode = OS_FSCK_MANUAL;
 
     i = 1;
-    if (strcmp(argv[i], "-fix") == 0) {
-        i++;
-        if (strcmp(argv[i], "delete") == 0) {
-            mode = OS_FSCK_REMOVE;
-        } else if (strcmp(argv[i], "repair") == 0) {
-            mode = OS_FSCK_REPAIR;
+    do {
+        start_option = i;
+        if (strcmp(argv[i], "-fix") == 0) {
+            i++;
+            if (strcmp(argv[i], "delete") == 0) {
+                mode = OS_FSCK_REMOVE;
+            } else if (strcmp(argv[i], "repair") == 0) {
+                mode = OS_FSCK_REPAIR;
+            }
+            i++;
+        } else if (strcmp(argv[i], "-y") == 0) {   //** Auto fix issues
+            i++;
+            repair_mode = 1;
+        } else if (strcmp(argv[i], "-n") == 0) {   //** Don't fix anything
+            i++;
+            repair_mode = 2;
         }
-        i++;
-    }
+    } while ((start_option < i) && (i<argc));
 
     path = argv[i];
 
@@ -87,13 +121,18 @@ int main(int argc, char **argv)
             break;
         }
 
-        if (mode != OS_FSCK_MANUAL) {
-            gop = os_fsck_object(lio_gc->os, lio_gc->creds, fname, ftype, mode);
-            gop_waitany(gop);
-            status = gop_get_status(gop);
-            gop_free(gop, OP_DESTROY);
-            if (status.error_code != OS_FSCK_GOOD) nfailed++;
-            info_printf(lio_ifd, 0, "    resolve:%d  object:%s\n", status.error_code, fname);
+        if (repair_mode < 2) {
+            if (mode != OS_FSCK_MANUAL) {
+                doit = (repair_mode == 1) ? 1 : ask_user();
+                if (doit == 1) {
+                    gop = os_fsck_object(lio_gc->os, lio_gc->creds, fname, ftype, mode);
+                    gop_waitany(gop);
+                    status = gop_get_status(gop);
+                    gop_free(gop, OP_DESTROY);
+                    if (status.error_code != OS_FSCK_GOOD) nfailed++;
+                    info_printf(lio_ifd, 0, "    resolve:%d  object:%s\n", status.error_code, fname);
+                }
+            }
         }
 
         free(fname);
