@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+systemctl start lserver
+systemctl start cron
+systemctl start ssh
+/etc/init.d/nullmailer start
+echo "Ctrl-P Ctrl-Q to exit without stopping this container"

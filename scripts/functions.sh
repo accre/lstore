@@ -7,6 +7,7 @@ LSTORE_SCRIPT_BASE=$(cd $(dirname "${BASH_SOURCE[0]}") && pwd)
 LSTORE_RELEASE_BASE=$(cd $(dirname "${LSTORE_SCRIPT_BASE}") && pwd)
 LSTORE_TARBALL_ROOT=$LSTORE_RELEASE_BASE/tarballs/
 LSTORE_LOCAL_REPOS="toolbox ibp gop lio meta release"
+LSTORE_VENV=${LSTORE_RELEASE_BASE}/venv
 
 #
 # Informational messages

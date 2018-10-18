@@ -1,0 +1,11 @@
+[Unit]
+Description=LServer server
+After=network.target auditd.service
+
+[Service]
+ExecStart=/usr/local/bin/lserver_mgmt.sh -v start
+ExecStop=/usr/local/bin/lserver_mgmt.sh -v stop
+Type=forking
+
+[Install]
+WantedBy=multi-user.target
