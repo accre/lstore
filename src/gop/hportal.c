@@ -555,9 +555,16 @@ void check_hportal_connections(gop_portal_context_t *hpc, hportal_t *hp)
 void hp_fail_all_tasks(hportal_t *hp, gop_op_status_t err_code)
 {
     gop_op_generic_t *hsop;
-
-    //** Use the hportal_get_op() To make sure we handle any coalescing
-    while ((hsop = tbx_stack_pop(hp->pending)) != NULL) {
+    int n;
+    
+    //Make sure we handle any coalescing
+    tbx_stack_move_to_bottom(hp->pending);
+    while ((hsop = tbx_stack_get_current_data(hp->pending)) != NULL) {
+        if (hsop->op->cmd.before_exec != NULL) { //** Need to do this to clean up any coalescing fragments
+            n = hsop->op->cmd.before_exec(hsop);
+            if (n > 0) tbx_stack_move_to_bottom(hp->pending); //** Reset ourselves to the bottom
+        }
+        tbx_stack_delete_current(hp->pending, 1, 0);
         gop_mark_completed(hsop, err_code);
     }
     hp->workload_pending = 0;
