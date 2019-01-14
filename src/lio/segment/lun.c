@@ -328,8 +328,8 @@ int slun_row_placement_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b,
 //log_printf(0, "i=%d ngood=%d nbad=%d m=%d\n", i, ngood, nbad, m);
         }
 
-
-        gop = rs_data_request(s->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, 1, timeout);
+        // 3=ignore fixed and it's ok to return a partial list
+        gop = rs_data_request(s->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, 3, timeout);
 
         if (rid_lock != NULL) apr_thread_mutex_unlock(rid_lock);  //** The data request will use the rid_changes table in constructing the ops
 

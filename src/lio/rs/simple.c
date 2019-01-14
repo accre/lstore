@@ -164,7 +164,6 @@ int rss_test(lio_rsq_base_ele_t *q, lio_rss_rid_entry_t *rse, int n_match, kvq_e
                 break;
             }
 
-
             //** If still a match then do the uniq/pickone check if needed on the value
             if (found == 1) {
                 if (n_match > 0) {
@@ -189,7 +188,7 @@ int rss_test(lio_rsq_base_ele_t *q, lio_rss_rid_entry_t *rse, int n_match, kvq_e
         }
     }
 
-    log_printf(15, "last err=%d\n", err);
+    log_printf(15, "last err=%d found=%d\n", err, found);
 
     //** Got a match so store it if needed
     if (found == 1) {
@@ -223,7 +222,7 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
     int state, *a, *b, *op_state, unique_size;
     tbx_stack_t *stack;
 
-    log_printf(15, "rs_simple_request: START rss->n_rids=%d n_rid=%d req_size=%d fixed_size=%d\n", rss->n_rids, n_rid, req_size, fixed_size);
+    log_printf(15, "rs_simple_request: START rss->n_rids=%d n_rid=%d req_size=%d fixed_size=%d ignore=%d\n", rss->n_rids, n_rid, req_size, fixed_size, ignore_fixed_err);
 
     for (i=0; i<req_size; i++) req[i].rid_key = NULL;  //** Clear the result in case of an error
 
@@ -403,7 +402,7 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
 
                 for (k=0; k<req_size; k++) {
                     if (req[k].rid_index == i) {
-                        log_printf(15, "rs_simple_request: i=%d ds_key=%s, rid_key=%s size=" XOT "\n", i, rse->ds_key, rse->rid_key, req[k].size);
+                        log_printf(15, "rs_simple_request: ADDING i=%d ds_key=%s, rid_key=%s size=" XOT "\n", i, rse->ds_key, rse->rid_key, req[k].size);
                         req[k].rid_key = strdup(rse->rid_key);
                         req[k].gop = ds_allocate(rss->ds, rse->ds_key, da, req[k].size, caps[k], timeout);
                         gop_opque_add(que, req[k].gop);
@@ -424,17 +423,17 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
                 }
                 status.op_status = OP_STATE_FAILURE;
                 status.error_code = RS_ERROR_FIXED_MATCH_FAIL;
-                if (ignore_fixed_err == 0) err_cnt++;
+                if ((ignore_fixed_err & 1) == 1) err_cnt++;
                 break;  //** Skip to the next in the list
             } else {
                 found = 0;
             }
         }
 
-        if ((found == 0) && (i>=fixed_size)) break;
-
+        if ((ignore_fixed_err & 2) == 0) {   //** See if it's Ok to return a partial list
+            if ((found == 0) && (i>=fixed_size)) break;
+        }
     }
-
 
     //** Clean up
     log_printf(15, "FREE j=%d\n", unique_size);
@@ -453,6 +452,8 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
     log_printf(15, "rs_simple_request: END n_rid=%d\n", n_rid);
 
     apr_thread_mutex_unlock(rss->lock);
+
+    if ((ignore_fixed_err & 2) == 2) found = 1;   //** It's Ok to return a partial list
 
     if ((found == 0) || (err_cnt>0)) {
         gop_opque_free(que, OP_DESTROY);
