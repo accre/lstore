@@ -866,7 +866,7 @@ void *rss_check_thread(apr_thread_t *th, void *data)
     apr_thread_mutex_lock(rss->lock);
     rss->current_check = 0;  //** Triggers a reload
     do {
-        log_printf(5, "LOOP START\n");
+        log_printf(5, "LOOP START check_timeout=%d\n", rss->check_timeout);
         _rs_simple_refresh(rs);  //** Do a quick check and see if the file has changed
 
         do_notify = 0;
@@ -881,7 +881,7 @@ void *rss_check_thread(apr_thread_t *th, void *data)
 
         if (((do_notify == 1) && (rss->dynamic_mapping == 1)) || (status_change != 0))  rss_mapping_notify(rs, map_version, status_change);
 
-        log_printf(5, "LOOP END\n");
+        log_printf(5, "LOOP END status_change=%d\n", status_change);
 
         apr_thread_mutex_lock(rss->lock);
         if (rss->shutdown == 0) apr_thread_cond_timedwait(rss->cond, rss->lock, dt);
