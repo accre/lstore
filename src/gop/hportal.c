@@ -126,6 +126,7 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     int min_conn;              //** Min allowed number of connections to a host
     int max_conn;              //** Max allowed number of connections to a host
     int finished;              //** Got a shutdown request
+    int dead_disable;          //** Disable flagging and host as dead.  Useful in environments with high churn
     apr_time_t dt_connect;     //** Max time to wait when making a connection to a host
     apr_time_t dt_dead_timeout; //** How long to keep a connection as dead before trying again
     apr_time_t dt_dead_check;  //** Check interval between host health checks
@@ -138,6 +139,7 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
 
 static gop_portal_context_t  hpc_default_options = {
     .name = NULL,
+    .dead_disable = 0,
     .dt_dead_timeout = apr_time_from_sec(5*60),
     .dt_dead_check = apr_time_from_sec(1*60),
     .min_bw_fraction = 0.001,
@@ -725,7 +727,7 @@ log_printf(15, "CONN_CLOSED hp=%s\n", hp->skey);
     if (tbx_stack_count(hp->conn_list) <= hp->limbo_conn) { //** Last connections so check if we enable dead mode
         if (conn->state == 0) {
             if (hp->stable_conn > 0) hp->stable_conn--;
-            if (tbx_stack_count(hp->conn_list) == 0) hp->dead = apr_time_now() + hpc->dt_dead_timeout;;
+            if ((hpc->dead_disable) && (tbx_stack_count(hp->conn_list) == 0)) hp->dead = apr_time_now() + hpc->dt_dead_timeout;;
         }
     }
 
@@ -865,12 +867,14 @@ void depot_health_check(gop_portal_context_t *hpc)
     for (hi=apr_hash_first(hpc->pool, hpc->hp); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, (void **)&hp);
 
-        if ((hp->dead != 0) || (hp->avg_bw >= min_bw) || 
+        if ((hp->dead != 0) || (hp->avg_bw >= min_bw) ||
             (tbx_stack_count(hp->conn_list) <= hp->limbo_conn)) continue;  //** Nothing to do
 
         //** If we made it here we need to mark the HP as dead.
-        hp->dead = apr_time_now() + hpc->dt_dead_timeout;
-        log_printf(15, "hpc=%s Marking as DEAD hp=%s\n", hpc->name, hp->skey);
+        if (!hpc->dead_disable) {
+            hp->dead = apr_time_now() + hpc->dt_dead_timeout;
+            log_printf(15, "hpc=%s Marking as DEAD hp=%s\n", hpc->name, hp->skey);
+        }
     }
 }
 
@@ -1142,14 +1146,14 @@ hconn_t *hconn_new(hportal_t *hp, tbx_que_t *outgoing, apr_pool_t *mpool)
 
     hc->outgoing = hp->hpc->que;
 
-    log_printf(10, "CREATE\n");
+    log_printf(10, "CREATE hp=%s\n", hp->skey);
     int i = 0;
-    do { 
+    do {
         tbx_thread_create_warn(err, &(hc->recv_thread), NULL, hc_recv_thread, (void *)hc, mpool);
         if (err != APR_SUCCESS) { i++; fprintf(stderr, "recv: i=%d\n", i); apr_sleep(apr_time_from_sec(1)); }
     } while (err != APR_SUCCESS);
     i = 0;
-    do { 
+    do {
         tbx_thread_create_warn(err, &(hc->send_thread), NULL, hc_send_thread, (void *)hc, mpool);
         if (err != APR_SUCCESS) { i++; fprintf(stderr, "send: i=%d\n", i); apr_sleep(apr_time_from_sec(1)); }
     } while (err != APR_SUCCESS);
@@ -1330,6 +1334,7 @@ void gop_hpc_print_running_config(gop_portal_context_t *hpc, FILE *fd, int print
     if (print_section_heading) fprintf(fd, "[%s]\n", hpc->name);
     fprintf(fd, "dt_dead_timeout = %s\n", tbx_stk_pretty_print_time(hpc->dt_dead_timeout, 0, text));
     fprintf(fd, "dead_check = %s\n", tbx_stk_pretty_print_time(hpc->dt_dead_check, 0, text));
+    fprintf(fd, "dead_disable = %d\n", hpc->dead_disable);
     fprintf(fd, "min_bw_fraction = %s\n", tbx_stk_pretty_print_double_with_scale(1000, hpc->min_bw_fraction, text));
     fprintf(fd, "max_total_conn = %d\n", hpc->max_total_conn);
     fprintf(fd, "max_idle = %s\n", tbx_stk_pretty_print_time(hpc->max_idle, 0, text));
@@ -1361,6 +1366,7 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
     hpc->hp = apr_hash_make(hpc->pool); FATAL_UNLESS(hpc->hp != NULL);
     hpc->que = tbx_que_create(10000, sizeof(hpc_cmd_t));
 
+    hpc->dead_disable = hpc_default_options.dead_disable;
     hpc->dt_dead_timeout = hpc_default_options.dt_dead_timeout;
     hpc->dt_dead_check = hpc_default_options.dt_dead_check;
     hpc->min_bw_fraction = hpc_default_options.min_bw_fraction;
@@ -1389,6 +1395,7 @@ void gop_hpc_load(gop_portal_context_t *hpc, tbx_inip_file_t *fd, char *section)
 {
     char text[1024];
 
+    hpc->dead_disable = tbx_inip_get_integer(fd, section, "dead_disable", hpc_default_options.dead_disable);
     hpc->dt_dead_timeout = tbx_inip_get_time(fd, section, "dead_timeout", tbx_stk_pretty_print_time(hpc_default_options.dt_dead_timeout, 0, text));
     hpc->dt_dead_check = tbx_inip_get_time(fd, section, "dead_check", tbx_stk_pretty_print_time(hpc_default_options.dt_dead_check, 0, text));
     hpc->min_bw_fraction = tbx_inip_get_double(fd, section, "min_bw_fraction", hpc_default_options.min_bw_fraction);
