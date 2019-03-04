@@ -335,7 +335,7 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     gop_opque_t *q;
     lio_ex3_inspect_command_t ic;
     bool do_fix;
-    int i, err, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty;
+    int i, err, j, k, d, nstripes, total_stripes, stripe, bufstripes, n_empty, retry;
     int  fail_quick, n_iov, good_magic, unrecoverable_count, bad_count, repair_errors, erasure_errors;
     int magic_count[s->n_devs], match, index, magic_used;
     int magic_devs[s->n_devs*s->n_devs];
@@ -413,6 +413,8 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     }
 
     for (stripe=0; stripe<total_stripes; stripe += bufstripes) {
+        retry = 0;
+retry:
         dtt = apr_time_now();
         ex_read.offset = base_offset + (ex_off_t)stripe*s->stripe_size_with_magic;
         nstripes = stripe + bufstripes;
@@ -500,6 +502,16 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
             used = 0;
 
             if (((good_magic == 0) && (magic_count[index] != s->n_devs)) || (magic_count[index] < s->n_data_devs)) {
+                if (retry == 0) {
+                    retry++;
+                    log_printf(0, "unrecoverable error detected attempting to retry read stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
+                    if (sf->do_print == 1) {
+                        info_printf(si->fd, 1, XIDT ": unrecoverable error detected attempting to RETRY read stripe=%d i=%d good_magic=%d magic_count=%d\n",
+                            segment_id(si->seg), stripe,i, good_magic, magic_count[index]);
+                    }
+                    apr_sleep(apr_time_from_sec(10));  //** Sleep just a bit to hopefully let things settle
+                    goto retry;
+                }
                 unrecoverable_count++;
                 bad_count++;
                 log_printf(0, "unrecoverable error stripe=%d i=%d good_magic=%d magic_count=%d\n", stripe,i, good_magic, magic_count[index]);
