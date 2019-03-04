@@ -41,6 +41,18 @@ struct tbx_que_s {
 
 //************************************************************************************
 
+int tbx_que_count(tbx_que_t *q)
+{
+    int n;
+    
+    apr_thread_mutex_lock(q->lock);
+    n = q->n_used;
+    apr_thread_mutex_lock(q->lock);
+    return(n);
+}
+
+//************************************************************************************
+
 void tbx_que_destroy(tbx_que_t *q)
 {
 
