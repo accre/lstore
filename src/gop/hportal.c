@@ -58,6 +58,8 @@ typedef struct hportal_t hportal_t;
 //} hpc_cmd_t;
 
 
+static char *hc_reasons[4] = { "GOP_ERR  ", "IDLE     ", "CLOSE_REQ", "FAIL_CONN" };
+
 typedef struct {
     int cmd;
     hconn_t *hc;
@@ -69,6 +71,22 @@ typedef struct {
 
 typedef struct gop_portal_context_t gop_portal_context_t;
 
+typedef struct {
+    char *skey;           //** Host name
+    int ns_id;            //** Network ID
+    int inuse;            //** Number of connections at time of close (includes this one)
+    int64_t n_commands;   //** Number of commands processed
+    int reason;           //** Reason for close (0=gop, 1=idle, 2=close request, 3=failed connection
+    apr_time_t dt;        //** Connection lifetime
+    apr_time_t end_time;  //** Time connection closed
+} hc_history_ele_t;
+
+typedef struct {
+    int max_size;
+    int slot;
+    hc_history_ele_t *hc;
+} hc_history_t;
+
 struct hconn_t {     //** Host connection structure
     hportal_t *hp;          //** Host portal
     tbx_ns_t *ns;           //** Network connection
@@ -78,12 +96,16 @@ struct hconn_t {     //** Host connection structure
     tbx_stack_ele_t *ele;   //** My position in the conn_list
     apr_thread_t *send_thread; //** Connection sending thread
     apr_thread_t *recv_thread; //** Connection receiving thread
+    gop_op_generic_t *send_gop; //** GOP being processed in send thread
+    tbx_atomic_int_t recv_working;  //** 1=Recv thread is working on a GOP, 0=idle
     int64_t cmds_processed; //** Number of commands processed
     int64_t workload;       //** Current task workload
     int64_t ntasks;         //** Current # of tasks
     int64_t gop_last_workload; //** Last processed GOP workload
     apr_time_t gop_last_dt;    //** Processing time for last GOP
+    apr_time_t start_time;     //** Connection start time
     int state;              //** Connection state 0=startup, 1=ready, 2=closing
+    int reason;             //** Reason for closing
 };
 
 struct hportal_t {   //** Host portal container
@@ -98,7 +120,9 @@ struct hportal_t {   //** Host portal container
     int64_t avg_workload;      //** Running average command workload
     int64_t avg_dt;            //** Running average time;
     int port;                  //** Port to connect to
+    int max_pending;           //** Max pending queue depth
     apr_time_t dead;           //** Dead host if non-zero
+    apr_time_t last_conn_check; //** Last time we checked connections
     int limbo_conn;            //** Number of connections spawned but not yet connected.
     int pending_conn;          //** This is the number of outstanding connections we are waiting to close from ANY HP
     int stable_conn;           //** Number of stable connections
@@ -122,6 +146,7 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     int todo_waiting;          //** Flag that someone is waiting
     int pending_conn;          //** Total number of pending connections across all HPs
     int running_conn;          //** currently running # of connections
+    int hp_running;            //** Number of HP with active connections
     int max_total_conn;        //** Max aggregate allowed number of connections
     int min_conn;              //** Min allowed number of connections to a host
     int max_conn;              //** Max allowed number of connections to a host
@@ -130,9 +155,11 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     apr_time_t dt_connect;     //** Max time to wait when making a connection to a host
     apr_time_t dt_dead_timeout; //** How long to keep a connection as dead before trying again
     apr_time_t dt_dead_check;  //** Check interval between host health checks
+    apr_time_t dt_start;       //** Start time for hportal
     int64_t max_workload;      //** Max allowed workload before spawning another connection
     tbx_atomic_int_t dump_running; //** Dump stats running if = 1
-
+    int hc_history_size;       //** Size of the connection history
+    hc_history_t *hc_history;  //** Connection history
     void *arg;
     gop_portal_fn_t *fn;       //** Actual implementaion for application
 };
@@ -150,7 +177,8 @@ static gop_portal_context_t  hpc_default_options = {
     .max_conn = 4,
     .dt_connect = apr_time_from_sec(10),
     .max_workload = 10*1024*1024,
-    .mix_latest_fraction = 0.5
+    .mix_latest_fraction = 0.5,
+    .hc_history_size = 1000
 };
 
 
@@ -229,15 +257,21 @@ hconn_t *find_conn_to_close(gop_portal_context_t *hpc)
     hportal_t *hp;
     hconn_t *best_hc, *hc;
     int64_t best_workload;
-
+    int64_t least_busy, hp_busy;;
+    
+    least_busy = -1;
     best_hc = NULL;
-    best_workload = hpc->max_workload + 1;
+    best_workload = -1;
     for (hi=apr_hash_first(hpc->pool, hpc->hp); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, (void **)&hp);
+        hp_busy = tbx_stack_count(hp->pending);
 	    for (hc = tbx_stack_top_first(hp->conn_list); hc != NULL; hc = tbx_stack_next_down(hp->conn_list)) {
-            if ((hc->state == 1) && (best_workload > hc->workload)) {
-                best_workload = hc->workload;
-                best_hc = hc;
+            if ((hc->state == 1) && ((!best_hc) || (best_workload >= hc->workload))) {
+                if ((!best_hc) || ((tbx_stack_count(hc->hp->conn_list) > 1) && (least_busy >= hp_busy))) {
+                    best_workload = hc->workload;
+                    best_hc = hc;
+                    least_busy = hp_busy;
+                }
             }
         }
     }
@@ -318,9 +352,84 @@ static int hp_compare(const void *p1, const void *p2)
 }
 
 //************************************************************************
+// hc_history_create - Creates the connection history
+//************************************************************************
+
+hc_history_t *hc_history_create(int n)
+{
+    hc_history_t *h;
+    
+    tbx_type_malloc_clear(h, hc_history_t, 1);
+    h->max_size = n;
+    tbx_type_malloc_clear(h->hc, hc_history_ele_t, h->max_size);
+
+    return(h);
+}
+
+//************************************************************************
+// hc_history_destroy - Destroys the connection history
+//************************************************************************
+
+void hc_history_destroy(hc_history_t *h)
+{
+    int i;
+    
+    for (i=0; i<h->max_size; i++) {
+        if (h->hc[i].skey) free(h->hc[i].skey);
+    }
+    
+    free(h->hc);
+    free(h);
+}
+
+//************************************************************************
+// hc_history_add - Add the connection to the history
+//************************************************************************
+
+void hc_history_add(hc_history_t *h, hconn_t *hc)
+{
+    hc_history_ele_t *c;
+    
+    c = &(h->hc[h->slot % h->max_size]);
+    if (c->skey) free(c->skey);
+
+    c->skey = strdup(hc->hp->skey);
+    c->ns_id = tbx_ns_getid(hc->ns);
+    c->n_commands = hc->cmds_processed;
+    c->reason = hc->reason;
+    c->end_time = apr_time_now();
+    c->dt = apr_time_now() - hc->start_time;
+    c->inuse = tbx_stack_count(hc->hp->conn_list)+1;
+
+    //** Update the slot
+    h->slot++;
+}
+
+
+//************************************************************************
+// hc_history_print - Prints the connection history
+//************************************************************************
+
+void hc_history_print(hc_history_t *h, apr_time_t dt_start, FILE *fd)
+{
+    int i, slot;
+    hc_history_ele_t *c;
+    char ppbuf1[100], ppbuf2[100];
+    
+    fprintf(fd, "Connection History (size=%d, slot=%d) ---------------------------------------\n", h->max_size, h->slot);
+    for (i=0; i<h->max_size; i++) {
+        slot = (i+h->slot) % h->max_size;
+        c = &(h->hc[slot]);
+        if (c->skey) {
+            fprintf(fd, "%s:  host: %s  ns: %d  inuse: %d  cmds: " I64T "  reason: %s  DT: %s\n", tbx_stk_pretty_print_time(c->end_time-dt_start, 0, ppbuf1), c->skey, 
+                c->ns_id, c->inuse, c->n_commands, hc_reasons[c->reason], tbx_stk_pretty_print_time(c->dt, 0, ppbuf2));
+        }
+    }
+}
+
+//************************************************************************
 // determine_bandwidths - Determine the various HP bandwidths and optionally
 //     return the min, max, and median HP's. The average BW is returned
-
 //************************************************************************
 
 double determine_bandwidths(gop_portal_context_t *hpc, int *n_used, hportal_t **hp_min, hportal_t **hp_median, hportal_t **hp_max)
@@ -397,19 +506,20 @@ void dump_stats(gop_portal_context_t *hpc, FILE *fd)
     total_avg_dt = 0;
     total_avg_wl = 0;
     n_hp = n_hc = 0;
-    fprintf(fd, "Host Portal info (%s) -------------------------------------------\n", hpc->name);
-    fprintf(fd, "Connection info -- Running: %d  Pending: %d  Max allowed: %d  Min/host: %d  Max/host: %d  Max workload: %s\n",
-        hpc->running_conn, hpc->pending_conn, hpc->max_total_conn, hpc->min_conn, hpc->max_conn, tbx_stk_pretty_print_double_with_scale(1024, hpc->max_workload, ppbuf1));
+    fprintf(fd, "Host Portal info (%s)  Elapsed time: %s -------------------------------------------\n", hpc->name,
+        tbx_stk_pretty_print_time(apr_time_now()-hpc->dt_start, 0, ppbuf1));
+    fprintf(fd, "Connection info -- HP w/conn: %d  Running: %d  Pending: %d  Max allowed: %d  Min/host: %d  Max/host: %d  Max workload: %s\n",
+        hpc->hp_running, hpc->running_conn, hpc->pending_conn, hpc->max_total_conn, hpc->min_conn, hpc->max_conn, tbx_stk_pretty_print_double_with_scale(1024, hpc->max_workload, ppbuf1));
     determine_bandwidths(hpc, &n_used, &hp_range[0], &hp_range[1], &hp_range[2]);
 
     for (hi=apr_hash_first(hpc->pool, hpc->hp); hi != NULL; hi = apr_hash_next(hi)) {
         apr_hash_this(hi, NULL, NULL, (void **)&hp);
 
         fprintf(fd, "    Host: %s\n", hp->skey);
-        fprintf(fd, "        Workload - pending: %s executing: %s,  Commands processed: " I64T "  Tasks Queued: %d  Merged Commands: " I64T "\n",
+        fprintf(fd, "        Workload - pending: %s executing: %s,  Commands processed: " I64T "  Submitted: " I64T "  Tasks Queued: %d  Max Queued: %d  Merged Commands: " I64T "\n",
             tbx_stk_pretty_print_double_with_scale(1024, hp->workload_pending, ppbuf1),
             tbx_stk_pretty_print_double_with_scale(1024, hp->workload_executing, ppbuf2),
-            hp->cmds_processed, tbx_stack_count(hp->pending), hp->n_coalesced);
+            hp->cmds_processed, hp->cmds_submitted, tbx_stack_count(hp->pending), hp->max_pending, hp->n_coalesced);
 
         fprintf(fd, "        Conn: %d  Stable: %d  Pending: %d  Limbo: %d  Dead: %d  -- Avg  Workload: %s DT: %s Bandwidth: %s/s\n",
             tbx_stack_count(hp->conn_list), hp->stable_conn, hp->pending_conn, hp->limbo_conn, (hp->dead > 0) ? 1 : 0,
@@ -422,10 +532,10 @@ void dump_stats(gop_portal_context_t *hpc, FILE *fd)
             total_avg_dt += hp->avg_dt;
             total_avg_wl += hp->avg_workload;
         }
-        for (hc = tbx_stack_top_first(hp->conn_list), i=0; hc != NULL; hc = tbx_stack_next_down(hp->conn_list), i++) {
+        for (hc = tbx_stack_bottom_first(hp->conn_list), i=0; hc != NULL; hc = tbx_stack_next_up(hp->conn_list), i++) {
             n_hc++;
             fprintf(fd, "        %d --  Commands processed: " I64T "  Workload: %s  Pending: " I64T "  State: %d -- GOP: DT: %s  Workload: %s\n",
-                 i, hc->cmds_processed, tbx_stk_pretty_print_double_with_scale(1024, hc->workload, ppbuf1), hc->ntasks, hc->state,
+                 tbx_ns_getid(hc->ns), hc->cmds_processed, tbx_stk_pretty_print_double_with_scale(1024, hc->workload, ppbuf1), hc->ntasks, hc->state,
                  tbx_stk_pretty_print_time(hc->gop_last_dt, 0, ppbuf2), tbx_stk_pretty_print_double_with_scale(1024, hc->gop_last_workload, ppbuf3));
         }
     }
@@ -451,6 +561,9 @@ void dump_stats(gop_portal_context_t *hpc, FILE *fd)
 
     fprintf(fd, "\n");
 
+    hc_history_print(hpc->hc_history, hpc->dt_start, fd);
+    fprintf(fd, "\n");
+    
     tbx_atomic_set(hpc->dump_running, 0);  //** Signal that we are finished
 }
 
@@ -487,8 +600,9 @@ log_printf(15, "hp=%s gid=%d pending=%d workload=" I64T "\n", hp->skey, gop_id(g
 
 void check_hportal_connections(gop_portal_context_t *hpc, hportal_t *hp)
 {
-    int total_workload, i, n, ideal, extra, nconn, hpconn, nshort;
-
+    int i, n, extra, hpconn, nshort, nconn;
+    int64_t ideal, total_workload;
+    
     hpconn = tbx_stack_count(hp->conn_list);
 
     if (hp->dead > 0) return;  //** Nothing to do. Still in timeout
@@ -496,13 +610,26 @@ void check_hportal_connections(gop_portal_context_t *hpc, hportal_t *hp)
     //** Check if we need to add connections
     total_workload = hp->workload_pending + hp->workload_executing;
     nconn = hpconn + hp->pending_conn;
-    ideal = (nconn > 0) ? total_workload / nconn : hpc->min_conn;
+    ideal = total_workload / hpc->max_workload;
+    if (ideal == 0) ideal = 1;
+    n = tbx_stack_count(hp->pending) + hp->cmds_submitted - hp->cmds_processed;
+    if (ideal > n) {
+        ideal = n;
+    }
 
     if (hpconn >= ideal) return;  //** Nothing to do so kick out
-
     if (ideal > hpc->max_conn) ideal = hpc->max_conn;
-    extra = ideal - hpconn - hp->pending_conn;  //** These are the extra connections we want to make
+    extra = ideal - hpconn - hp->pending_conn;  //** These are the extra connections we want to make        
 
+    n = (hpc->hp_running > 0) ? hpc->max_total_conn / hpc->hp_running : 1;  //** Get the average number of connections
+    if (ideal > n) { //** Over the average so only make extra connections if we don't have to close something
+        n = extra + hpc->running_conn;
+        if (n > hpc->max_total_conn) {
+            extra = hpc->max_total_conn - hpc->running_conn;
+        }
+        if ((nconn == 0) && (extra == 0)) extra = 1; //** Make sure we have at least 1 connection
+    }
+    
     //** Check if we are over the stable connection limit
     if (ideal > hp->stable_conn) {
         if (apr_time_now() > hp->pause_until) {
@@ -603,18 +730,17 @@ void hp_gop_retry(hconn_t *hc, gop_op_generic_t *gop)
 // hconn_least_busy - Returns the least busy connection
 //************************************************************************
 
-hconn_t *hconn_least_busy(gop_portal_context_t *hpc, hportal_t *hp, int ideal_conn)
+hconn_t *hconn_least_busy(gop_portal_context_t *hpc, hportal_t *hp)
 {
     hconn_t *hc, *best_hc;
-    int i, best_load;
+    int64_t best_load;
 
     best_load = hpc->max_workload+1;
     best_hc = NULL;
 log_printf(15, "START hp=%s\n", hp->skey);
-    for (hc = tbx_stack_top_first(hp->conn_list), i=0; (hc != NULL) && (i<ideal_conn); hc = tbx_stack_next_down(hp->conn_list)) {
+    for (hc = tbx_stack_bottom_first(hp->conn_list); hc != NULL; hc = tbx_stack_next_up(hp->conn_list)) {
         if (hc->state == 1) {
-            i++;
-            if ((hc->workload < best_load) || (best_hc == NULL)) {
+            if (hc->workload < best_load) {
                 best_load = hc->workload;
                 best_hc = hc;
             }
@@ -635,35 +761,56 @@ int hp_submit_tasks(gop_portal_context_t *hpc, hportal_t *hp)
     gop_op_generic_t *gop;
     hconn_t *c;
     hpc_cmd_t cmd;
-    int ideal_conn;
-    int workload, n;
+    int np, nc, n;
+    int64_t workload;
 
 log_printf(15, "hp=%s pending=%d\n", hp->skey, tbx_stack_count(hp->pending));
     //** Make sure there is something to do
-    if (tbx_stack_count(hp->pending) == 0) return(0);
+    np = tbx_stack_count(hp->pending);
+    if (np == 0) return(0);
 
+    nc = tbx_stack_count(hp->conn_list);
+    
     //** Adjust the connections if needed
-    check_hportal_connections(hpc, hp);
+    //**   1) Periodic check time
+    //**   2) No existing connections
+    //**   3) We have free connections so see if we can use them
+    //**   4) We've hit a new high water mark on pending commands and we can still add connections
+    if ((hp->last_conn_check < apr_time_now()) || (nc == 0) || ((nc < hpc->max_conn) && ((hpc->running_conn < hpc->max_total_conn) || (np > hp->max_pending)))) {
+        check_hportal_connections(hpc, hp);
+        hp->last_conn_check = apr_time_now() + apr_time_from_sec(10);
+    }
+
+    if (np > hp->max_pending) hp->max_pending = np;
 
     //** See if all the connections are dead
-    if ((hp->dead > 0) && (tbx_stack_count(hp->conn_list) == hp->limbo_conn)) {
+    if ((hp->dead > 0) && (tbx_stack_count(hp->conn_list) == 0) && (hp->limbo_conn == 0)) {
         hp_fail_all_tasks(hp, gop_failure_status);  //** and fail everything in the que
         return(0);
     }
 
     memset(&cmd, 0, sizeof(cmd));
 
-    ideal_conn = (hp->workload_pending + hp->workload_executing) / hpc->max_workload;
-    if (ideal_conn == 0) {
-        ideal_conn = 1;
-    } else if (ideal_conn > hpc->max_conn) {
-        ideal_conn = hpc->max_conn;
-    }
-
     //** submit the tasks
-    c = hconn_least_busy(hpc, hp, ideal_conn);
+    c = hconn_least_busy(hpc, hp);
 log_printf(15, "hp=%s c=%p\n", hp->skey, c);
-    if (c == NULL) return(tbx_stack_count(hp->pending));
+    if (c == NULL) {  //** No connections so see if we fail some ops
+        if (hp->stable_conn == 0) {  //** Not waiting on any connections and we're completely unstable
+            tbx_stack_move_to_bottom(hp->pending);
+            gop = tbx_stack_get_current_data(hp->pending);
+            if (gop) {
+                gop->op->cmd.retry_count--;
+                if (gop->op->cmd.retry_count <= 0) {  //** No more retries left so fail the gop
+                    hp->cmds_submitted++;
+                    hp->cmds_processed++;
+                    hp->workload_pending -= gop->op->cmd.workload;
+                    tbx_stack_delete_current(hp->pending, 1, 0);
+                    gop_mark_completed(gop, gop_failure_status);
+                }
+            }
+        }
+        return(tbx_stack_count(hp->pending));
+    }
 
     cmd.cmd = CONN_GOP_SUBMIT;
     tbx_stack_move_to_bottom(hp->pending);
@@ -691,13 +838,24 @@ log_printf(15, "incoming: hp=%s CONN_GOP_SUBMIT gid=%d c->workload=" I64T " c->n
             hp->workload_executing += workload;
             tbx_stack_delete_current(hp->pending, 1, 0);
         } else {
-            c = hconn_least_busy(hpc, hp, ideal_conn);
+            c = hconn_least_busy(hpc, hp);
             if (c) {
 log_printf(15, "hpc=%s hp=%s workload=" I64T " max=" I64T "\n", hpc->name, hp->skey, c->workload, hpc->max_workload);
 
                 if (c->workload > hpc->max_workload) break;
             } else {
 log_printf(15, "hpc=%s hp=%s c=NULL\n", hpc->name, hp->skey);
+                //** Check if we have essentially a dead connection and need to start failing GOPs
+                if ((hp->stable_conn == 0) && (tbx_stack_count(hp->conn_list) == 0)) {
+                    gop->op->cmd.retry_count--;
+                    if (gop->op->cmd.retry_count <= 0) {  //** No more retries left so fail the gop
+                        hp->cmds_submitted++;
+                        hp->cmds_processed++;
+                        hp->workload_pending -= gop->op->cmd.workload;
+                        tbx_stack_delete_current(hp->pending, 1, 0);
+                        gop_mark_completed(gop, gop_failure_status);
+                    }
+                }
                 break;
             }
         }
@@ -713,7 +871,8 @@ log_printf(15, "hpc=%s hp=%s c=NULL\n", hpc->name, hp->skey);
 void handle_closed(gop_portal_context_t *hpc, hconn_t *conn, hportal_t *hp_requested_close)
 {
     hportal_t *hp = conn->hp;
-
+    int n;
+    
 log_printf(15, "CONN_CLOSED hp=%s\n", hp->skey);
     if (hp_requested_close != NULL) {
         hp_requested_close->pending_conn--;
@@ -723,14 +882,22 @@ log_printf(15, "CONN_CLOSED hp=%s\n", hp->skey);
 
     tbx_stack_move_to_ptr(hp->conn_list, conn->ele);
     tbx_stack_delete_current(hp->conn_list, 1, 0);
+    n = tbx_stack_count(hp->conn_list);
+    if (n == 0) hpc->hp_running--;
 
-    if (tbx_stack_count(hp->conn_list) <= hp->limbo_conn) { //** Last connections so check if we enable dead mode
+    if (n <= hp->limbo_conn) { //** Last connections so check if we enable dead mode
         if (conn->state == 0) {
-            if (hp->stable_conn > 0) hp->stable_conn--;
-            if ((hpc->dead_disable) && (tbx_stack_count(hp->conn_list) == 0)) hp->dead = apr_time_now() + hpc->dt_dead_timeout;;
+            if (hp->stable_conn > 0) {   //** Just decrement the stable count and keep trying to connect
+                hp->stable_conn--;
+            } else if (tbx_stack_count(hp->conn_list) == 0) {  //** Can't seem to connect at all
+                if (hpc->dead_disable == 0) {
+                    hp->dead = apr_time_now() + hpc->dt_dead_timeout;
+                }
+            }
         }
     }
 
+    hc_history_add(hpc->hc_history, conn);
     hconn_destroy(conn);
 }
 
@@ -786,6 +953,7 @@ log_printf(15, "Got a CONN_CLOSE_REQUEST from hp=%s.  Sending official CONN_CLOS
                 cmd.hc->workload -= cmd.hc->workload;
                 cmd.hc->hp->workload_executing -= cmd.gop_workload;
                 cmd.hc->hp->workload_pending += cmd.gop_workload;
+                cmd.hc->hp->cmds_submitted--;  //** Retrying the submit
                 tbx_stack_move_to_bottom(cmd.hc->hp->pending);
                 tbx_stack_insert_below(cmd.hc->hp->pending, cmd.ptr);
                 break;
@@ -799,6 +967,7 @@ log_printf(15, "Got a CONN_CLOSE_REQUEST from hp=%s.  Sending official CONN_CLOS
                 hp->avg_dt = (hp->avg_dt != 0) ? hpc->mix_latest_fraction * cmd.gop_dt + (1-hpc->mix_latest_fraction)*hp->avg_dt : cmd.gop_dt;
                 cmd.hc->hp->workload_executing -= cmd.gop_workload;
                 cmd.hc->hp->cmds_processed++;
+                cmd.hc->cmds_processed++;
                 //cmd.hc->hp->dead = 0;
                 break;
         }
@@ -892,6 +1061,9 @@ void *hportal_thread(apr_thread_t *th, void *arg)
     int done, ntodo;
     apr_time_t dead_next_check;
 
+    hpc->hc_history = hc_history_create(hpc->hc_history_size);
+    hpc->dt_start = apr_time_now();
+    
     dead_next_check = apr_time_now() + apr_time_from_sec(60);
     done = 0;
     do {
@@ -916,6 +1088,9 @@ void *hportal_thread(apr_thread_t *th, void *arg)
         hp_destroy(hp);
     }
 
+    //** Clean up the connection history
+    hc_history_destroy(hpc->hc_history);
+    
     return(NULL);
 }
 
@@ -932,8 +1107,8 @@ void *hc_send_thread(apr_thread_t *th, void *data)
     gop_op_generic_t *gop;
     gop_command_op_t *hop;
     hpc_cmd_t cmd;
-    apr_time_t dt, start_time, timeout;
-    int err, nbytes;
+    apr_time_t timeout;
+    int err, nbytes, recv_idle;
     gop_op_status_t finished;
     apr_status_t dummy;
 
@@ -944,6 +1119,7 @@ void *hc_send_thread(apr_thread_t *th, void *data)
     if (err) {
         log_printf(10, "FAILED internal hp=%s SEND CONN_CLOSED\n", hp->skey);
         memset(&cmd, 0, sizeof(cmd));
+        hc->reason = 3;
         goto failed;
     }
 
@@ -954,29 +1130,36 @@ log_printf(15, "internal hp=%s SEND CONN_READY\n", hp->skey);
 
     //** Now enter the main loop
     finished = gop_success_status;
-    start_time = apr_time_now();
-    dt = 0;
-    timeout = apr_time_from_sec(1);
+    timeout = hpc->max_idle;
+    recv_idle = 0;
     while (finished.op_status == OP_STATE_SUCCESS) {
         cmd.cmd = CONN_EMPTY;
         nbytes = tbx_que_get(hc->incoming, &cmd, timeout);
 log_printf(15, "hp=%s get=%d cmd=%d\n", hp->skey, nbytes, cmd.cmd);
         if (nbytes != 0) {
-log_printf(15, "hp=%s checking timeout\n", hp->skey);
-            dt = apr_time_now() - start_time;
-            if (dt > hpc->max_idle) {   //** Nothing to do so kick out
-                finished.op_status = OP_STATE_FAILURE;
-log_printf(15, "hp=%s kicking out\n", hp->skey);
+            if (tbx_atomic_get(hc->recv_working) == 0) {
+                recv_idle++;
+            } else {
+                recv_idle = 0;
             }
+            
+            if (recv_idle >= 2) {
+                finished.op_status = OP_STATE_FAILURE;
+                hc->reason = 1;
+            }
+log_printf(15, "hp=%s kicking out\n", hp->skey);
             continue;
         } else if (cmd.cmd == CONN_CLOSE) {
 log_printf(15, "hp=%s CONN_CLOSE\n", hp->skey);
             finished = gop_failure_status;
+            hc->reason = 2;
             continue;
         }
 
         //** Got a task to process
         gop = cmd.ptr;
+        tbx_atomic_set(hc->send_gop, gop);  //** Update what we're working on
+        recv_idle = 0;  //** We're working so don't start counting timeouts
 log_printf(15, "hp=%s gid=%d\n", hp->skey, gop_id(gop));
         hop = &(gop->op->cmd);
         hop->start_time = apr_time_now();  //** This is changed in the recv phase also
@@ -991,8 +1174,9 @@ log_printf(15, "hp=%s send_command=%d\n", hp->skey, finished.op_status);
             finished = (hop->send_phase != NULL) ? hop->send_phase(gop, ns) : gop_success_status;
 log_printf(15, "hp=%s send_phase=%d\n", hp->skey, finished.op_status);
         }
-
+ 
         cmd.status = finished;
+        tbx_atomic_set(hc->send_gop, NULL);  //** Reflect were finished
         tbx_que_put(hc->internal, &cmd, TBX_QUE_BLOCK);
     }
 
@@ -1034,11 +1218,10 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
 {
     hconn_t *hc = data;
     hportal_t *hp = hc->hp;
-    gop_portal_context_t *hpc = hp->hpc;
     tbx_ns_t *ns = hc->ns;
     gop_op_generic_t *gop;
     gop_command_op_t *hop;
-    apr_time_t dt, start_time, timeout;
+    apr_time_t timeout;
     int nbytes;
     hpc_cmd_t cmd;
     gop_op_status_t status;
@@ -1058,18 +1241,20 @@ log_printf(15, "hp=%s CONN_READY\n", hc->hp->skey);
 
     //** Now enter the main loop
     status = gop_success_status;
-    start_time = apr_time_now();
     cmd.cmd = CONN_EMPTY;
-    dt = 0;
     timeout = apr_time_from_sec(1);
     while (status.op_status == OP_STATE_SUCCESS) {
         cmd.cmd = CONN_EMPTY;
         nbytes = tbx_que_get(hc->internal, &cmd, timeout);
 log_printf(15, "hp=%s get=%d cmd=%d\n", hc->hp->skey, nbytes, cmd.cmd);
         if (nbytes != 0) {
-            dt = apr_time_now() - start_time;
-            if (dt > hpc->max_idle) {   //** Nothing to do so kick out
-                status.op_status = OP_STATE_FAILURE;
+            tbx_atomic_set(hc->recv_working, 0);  //** Flag that we're not busy
+            //** Let the sending thread know their gop is on top.
+            gop = tbx_atomic_get(hc->send_gop);
+            if (gop) {
+                tbx_atomic_set(gop->op->cmd.on_top, 1);
+            } else {
+                tbx_atomic_set(hc->recv_working, 0);  //** Flag that we're not busy either
             }
             continue;
         } else if (cmd.cmd == CONN_CLOSE) {
@@ -1084,6 +1269,8 @@ log_printf(15, "hp=%s get=%d cmd=%d\n", hc->hp->skey, nbytes, cmd.cmd);
 
         //** Got a task to process
         gop = cmd.ptr;
+        tbx_atomic_set(gop->op->cmd.on_top, 1);
+        tbx_atomic_set(hc->recv_working, 1);   //** Set our working flag for the send thread
 log_printf(15, "hp=%s gid=%d\n", hp->skey, gop_id(gop));
         hop = &(gop->op->cmd);
         status = (hop->recv_phase != NULL) ? hop->recv_phase(gop, ns) : status;
@@ -1110,9 +1297,17 @@ log_printf(15, "hp=%s sending a CONN_CLOSE_REQUEST\n", hp->skey);
 
         //** Wait until I get an official close request
         //** In the meantime just dump all the requests back on the que
-        while (tbx_que_get(hc->internal, &cmd, TBX_QUE_BLOCK) == 0) {
-            if (cmd.cmd == CONN_CLOSE) break;
-            hp_gop_retry(hc, cmd.ptr);
+        while (1) {
+            cmd.cmd = CONN_EMPTY;
+            nbytes = tbx_que_get(hc->internal, &cmd, timeout);
+            if (nbytes == 0) {
+                if (cmd.cmd == CONN_CLOSE) break;
+                hp_gop_retry(hc, cmd.ptr);
+            }
+            
+            //** Let the sending thread know their gop is on top.
+            gop = tbx_atomic_get(hc->send_gop);
+            if (gop) tbx_atomic_set(gop->op->cmd.on_top, 1);
         }
     }
 
@@ -1143,7 +1338,8 @@ hconn_t *hconn_new(hportal_t *hp, tbx_que_t *outgoing, apr_pool_t *mpool)
     hc->incoming = tbx_que_create(1000, sizeof(hpc_cmd_t));
     hc->internal = tbx_que_create(10000, sizeof(hpc_cmd_t));
     hc->ns = tbx_ns_new();
-
+    hc->start_time = apr_time_now();
+    
     hc->outgoing = hp->hpc->que;
 
     log_printf(10, "CREATE hp=%s\n", hp->skey);
@@ -1167,6 +1363,7 @@ hconn_t *hconn_new(hportal_t *hp, tbx_que_t *outgoing, apr_pool_t *mpool)
 
 void hconn_add(hportal_t *hp, hconn_t *hc)
 {
+    if (tbx_stack_count(hp->conn_list) == 0) hp->hpc->hp_running++; //** Update the # of HPs with a connection
     tbx_stack_push(hp->conn_list, hc);
     hc->ele = tbx_stack_get_current_ptr(hp->conn_list);
 }
@@ -1341,6 +1538,7 @@ void gop_hpc_print_running_config(gop_portal_context_t *hpc, FILE *fd, int print
     fprintf(fd, "wait_stable_time = %s\n", tbx_stk_pretty_print_time(hpc->wait_stable_time, 0, text));
     fprintf(fd, "min_host_conn = %d\n", hpc->min_conn);
     fprintf(fd, "max_host_conn = %d\n", hpc->max_conn);
+    fprintf(fd, "hc_history_size = %d\n", hpc->hc_history_size);
     fprintf(fd, "max_workload_conn = %s\n", tbx_stk_pretty_print_int_with_scale(hpc->max_workload, text));
     fprintf(fd, "mix_latest_fraction = %s\n", tbx_stk_pretty_print_double_with_scale(1000, hpc->mix_latest_fraction, text));
     fprintf(fd, "\n");
@@ -1377,6 +1575,7 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
     hpc->max_conn = hpc_default_options.max_conn;
     hpc->dt_connect = hpc_default_options.dt_connect;
     hpc->max_workload = hpc_default_options.max_workload;
+    hpc->hc_history_size = hpc_default_options.hc_history_size;
     hpc->mix_latest_fraction = hpc_default_options.mix_latest_fraction;
     tbx_ns_timeout_set(&(hpc->dt_connect), 1, 0);
 
@@ -1407,6 +1606,7 @@ void gop_hpc_load(gop_portal_context_t *hpc, tbx_inip_file_t *fd, char *section)
     hpc->dt_connect = hpc_default_options.dt_connect;
     hpc->max_workload = tbx_inip_get_integer(fd, section, "max_workload_conn", hpc_default_options.max_workload);
     hpc->mix_latest_fraction = tbx_inip_get_double(fd, section, "mix_latest_fraction", hpc_default_options.mix_latest_fraction);
+    hpc->hc_history_size = tbx_inip_get_integer(fd, section, "hc_history_size", hpc_default_options.hc_history_size);
     tbx_ns_timeout_set(&(hpc->dt_connect), 1, 0);
 }
 
