@@ -21,9 +21,9 @@ limitations under the License.
 #ifndef ACCRE_LIO_LIO_FUSE_H_INCLUDED
 #define ACCRE_LIO_LIO_FUSE_H_INCLUDED
 
-#define FUSE_USE_VERSION 26
+#define FUSE_USE_VERSION 30
 
-#include <fuse.h>
+#include <fuse3/fuse.h>
 #include <lio/visibility.h>
 
 #ifdef __cplusplus
