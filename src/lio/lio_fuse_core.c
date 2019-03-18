@@ -63,6 +63,15 @@
 #include <attr/xattr.h>
 #endif
 
+#ifdef HAS_FUSE3
+    #define FILLER(fn, buf, dentry, stat, off)  fn(buf, dentry, stat, off, FUSE_FILL_DIR_PLUS)
+    #define LFS_INIT() void *lfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
+    #define LFS_READDIR() int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
+#else
+    #define FILLER(fn, buf, dentry, stat, off)  fn(buf, dentry, stat, off)
+    #define LFS_INIT() void *lfs_init(struct fuse_conn_info *conn)
+    #define LFS_READDIR() int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi)
+#endif
 
 //#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); tbx_log_flush(); apr_thread_mutex_lock((lfs)->lock)
 //#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  tbx_log_flush(); apr_thread_mutex_unlock((lfs)->lock)
@@ -255,6 +264,11 @@ int lfs_stat(const char *fname, struct stat *stat, struct fuse_file_info *fi)
     return(0);
 }
 
+int lfs_stat2(const char *fname, struct stat *stat)
+{
+    return(lfs_stat(fname, stat, NULL));
+}
+
 //*************************************************************************
 // lfs_closedir - Closes the opendir file handle
 //*************************************************************************
@@ -370,7 +384,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
 // lfs_readdir - Returns the next file in the directory
 //*************************************************************************
 
-int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
+LFS_READDIR()
 {
     lfs_dir_iter_t *dit= (lfs_dir_iter_t *)fi->fh;
     lfs_dir_entry_t *de;
@@ -399,7 +413,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
 
         de = tbx_stack_get_current_data(dit->stack);
         while (de != NULL) {
-            if (filler(buf, de->dentry, &(de->stat), off, FUSE_FILL_DIR_PLUS) == 1) {
+            if (FILLER(filler, buf, de->dentry, &(de->stat), off) == 1) {
                 dt = apr_time_now() - now;
                 dt /= APR_USEC_PER_SEC;
                 log_printf(1, "dt=%lf\n", dt);
@@ -438,7 +452,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
         tbx_stack_move_to_bottom(dit->stack);
         tbx_stack_insert_below(dit->stack, de);
 
-        if (filler(buf, de->dentry, &(de->stat), off, FUSE_FILL_DIR_PLUS) == 1) {
+        if (FILLER(filler, buf, de->dentry, &(de->stat), off) == 1) {
             dt = apr_time_now() - now;
             dt /= APR_USEC_PER_SEC;
             log_printf(15, "BUFFER FULL dt=%lf\n", dt);
@@ -819,7 +833,7 @@ int lfs_rename(const char *oldname, const char *newname, unsigned int flags)
     tbx_log_flush();
 
     if (flags) return(-EINVAL);  //** We don't currently do anything with the flags
-    
+
     lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, oldname, APR_HASH_KEY_STRING);
     if (fop) {  //** Got an open file so need to mve the entry there as well.
@@ -839,6 +853,12 @@ int lfs_rename(const char *oldname, const char *newname, unsigned int flags)
     return(0);
 }
 
+//*****************************************************************
+
+int lfs_rename2(const char *oldname, const char *newname)
+{
+    return(lfs_rename(oldname, newname, 0));
+}
 
 //*****************************************************************
 // lfs_truncate - Truncate the file
@@ -890,7 +910,7 @@ int lfs_ftruncate(const char *fname, off_t new_size, struct fuse_file_info *fi)
     tbx_log_flush();
 
     if (fi == NULL) return(lfs_truncate(fname, new_size));
-    
+
     fd = (lio_fd_t *)fi->fh;
     if (fd == NULL) {
         return(-EBADF);
@@ -937,6 +957,13 @@ int lfs_utimens(const char *fname, const struct timespec tv[2], struct fuse_file
     }
 
     return(0);
+}
+
+//*****************************************************************
+
+int lfs_utimens2(const char *fname, const struct timespec tv[2])
+{
+    return(lfs_utimens(fname, tv, NULL));
 }
 
 //*****************************************************************
@@ -1546,10 +1573,12 @@ void *lfs_init_real(struct fuse_conn_info *conn,
     return(lfs); //
 }
 
-void *lfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
+//** See macro for actual definition
+LFS_INIT()
 {
+#ifdef HAS_FUSE3
     cfg->use_ino = 0;
-    
+#endif
     return lfs_init_real(conn,0,NULL,NULL);
 }
 
@@ -1594,10 +1623,18 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
     .opendir = lfs_opendir,
     .releasedir = lfs_closedir,
     .readdir = lfs_readdir,
+#ifdef HAS_FUSE3
+    .truncate = lfs_ftruncate,
     .getattr = lfs_stat,
     .utimens = lfs_utimens,
-    .truncate = lfs_ftruncate,
     .rename = lfs_rename,
+#else
+    .truncate = lfs_truncate,
+    .ftruncate = lfs_ftruncate,
+    .getattr = lfs_stat2,
+    .utimens = lfs_utimens2,
+    .rename = lfs_rename2,
+#endif
     .mknod = lfs_mknod,
     .mkdir = lfs_mkdir,
     .unlink = lfs_unlink,

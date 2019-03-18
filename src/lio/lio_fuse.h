@@ -66,7 +66,11 @@ struct lio_fuse_t {
     lio_segment_rw_hints_t *rw_hints;
 };
 
-void *lfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg);
+#ifdef HAS_FUSE3
+    void *lfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg);
+#else
+    void *lfs_init(struct fuse_conn_info *conn);
+#endif
 void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument
 
 #ifdef __cplusplus

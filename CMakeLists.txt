@@ -217,7 +217,11 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${LSTORE_CHEAT_FLAGS}")
 
 # Find external deps we don't build
 find_package(OpenSSL REQUIRED)
-find_package(FUSE3 REQUIRED)
+find_package(FUSE3)
+if (NOT HAS_FUSE3)
+    find_package(FUSE REQUIRED)
+endif()
+
 find_package(ZLIB REQUIRED)
 find_package(ZMQ REQUIRED)
 find_package(LevelDB REQUIRED)

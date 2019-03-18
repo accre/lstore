@@ -27,7 +27,10 @@ if(NOT USE_SUPERBUILD)
     find_package(GOP REQUIRED)
     find_package(IBP REQUIRED)
     find_package(ZMQ REQUIRED)
-    find_package(FUSE REQUIRED)
+    find_package(FUSE3)
+    if (NOT HAS_FUSE3)
+        find_package(FUSE REQUIRED)
+    endif()
     find_package(LevelDB REQUIRED)
     include_directories(
         ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR}
@@ -41,6 +44,11 @@ if(NOT USE_SUPERBUILD)
 else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FILE_OFFSET_BITS=64")
 endif()
+
+if (HAS_FUSE3)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAS_FUSE3")
+endif()
+
 set(LSTORE_LIBS toolbox
                 gop
                 ibp
