@@ -116,12 +116,12 @@ gop_op_status_t rcc_response_get_config(void *task_arg, int tid)
     gop_mq_get_frame(f, (void **)&config, &n_config);
     log_printf(5, "config=%s\n", config);
 
-    if (n_config == 0) {
-        log_printf(0, " ERROR: Empty config!\n");
+    if (n_config <= 0) {
+        log_printf(0, " ERROR: Empty config! n=%d\n", n_config);
         status = gop_failure_status;
         goto fail;
     }
-    *arg->config = strdup(config);
+    *arg->config = strndup(config, n_config);
     log_printf(5, "rc_config_len=%d\n", n_config);
 
     //** Clean up
