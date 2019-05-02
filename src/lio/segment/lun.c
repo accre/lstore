@@ -617,26 +617,32 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
     tbx_stack_t *cleanup_stack;
     gop_op_status_t status;
     rs_query_t *rsq;
-    gop_op_generic_t *gop;
-    tbx_stack_t *attr_stack;
+    gop_op_generic_t *gop, *g;
     int i, j, loop, err, m, ngood, nbad, kick_out;
     int missing[n_devices];
     lio_rs_hints_t hints_list[n_devices];
     char *migrate;
     lio_data_block_t *db;
+    lio_data_block_t *db_orig[n_devices];
+    lio_data_block_t *db_working[n_devices];
 
     //** Dup the base query
     rsq = rs_query_dup(s->rs, args->query);
 
     memset(hints_list, 0, sizeof(hints_list));
-
+    memset(db_working, 0, n_devices * sizeof(lio_data_block_t));
+    
     loop = 0;
     kick_out = 10000;
     cleanup_stack = NULL;
     do {
         log_printf(15, "loop=%d ------------------------------\n", loop);
 
+        //** Copy the original data blocks over
+        for (i=0; i<n_devices; i++) db_orig[i] = b->block[i].data;
+    
         //** Make the fixed list mapping table
+        memset(req_list, 0, sizeof(lio_rs_request_t)*n_devices);
         nbad = n_devices-1;
         ngood = 0;
         m = 0;
@@ -645,8 +651,9 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
                 j = ngood;
                 hints_list[ngood].fixed_rid_key = b->block[i].data->rid_key;
                 hints_list[ngood].status = RS_ERROR_OK;
+                migrate = data_block_get_attr(b->block[i].data, "migrate");
                 ngood++;
-            } else {
+            } else {   //** Make sure we haven't already replaced it
                 j = nbad;
                 hints_list[nbad].fixed_rid_key = NULL;
                 hints_list[nbad].status = RS_ERROR_OK;
@@ -654,32 +661,19 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
                 req_list[m].rid_index = nbad;
                 req_list[m].size = b->block_len;
 
-                //** Make a new block and copy the old data
-                attr_stack = NULL;
-                if (b->block[i].data != NULL) {
-                    db = b->block[i].data;
-                    attr_stack = db->attr_stack;
-                    db->attr_stack = NULL;
-
-                    //** Make the cleanup operations
-                    if (args->qs) {
-                        gop = ds_remove(s->ds, da, ds_get_cap(db->ds, db->cap, DS_CAP_MANAGE), timeout);
-                        gop_opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
-                    }
-                    if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
-                    tbx_stack_push(s->db_cleanup, db);   //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
-
-                    b->block[i].data = data_block_create(s->ds);
-                } else {
-                    b->block[i].data = data_block_create(s->ds);
+                //** check if we need to make a working data block
+                if (db_working[i] == NULL) {
+                    db = data_block_create(s->ds);
+                    db_working[i] = db;
+                    db->attr_stack = (db_orig[i]) ? db_orig[i]->attr_stack : NULL;
+                    db->rid_key = NULL;
+                    db->max_size = b->block_len;
+                    db->size = b->block_len;
                 }
-                cap_list[m] = b->block[i].data->cap;
-                b->block[i].data->rid_key = NULL;
-                b->block[i].data->attr_stack = attr_stack;
-                b->block[i].data->max_size = b->block_len;
-                b->block[i].data->size = b->block_len;
-                b->block[i].read_err_count = 0;
-                b->block[i].write_err_count = 0;
+
+                cap_list[m] = db_working[i]->cap;
+                migrate = data_block_get_attr(db_working[i], "migrate");
+
                 missing[m] = i;
                 m++;
                 nbad--;
@@ -689,7 +683,6 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
                 rs_query_destroy(s->rs, hints_list[j].local_rsq);
             }
 
-            migrate = data_block_get_attr(b->block[i].data, "migrate");
             if (migrate != NULL) {
                 hints_list[j].local_rsq = rs_query_parse(s->rs, migrate);
             } else {
@@ -727,13 +720,29 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
         err = 0;
         for (j=0; j<m; j++) {
             i = missing[j];
-            log_printf(15, "missing[%d]=%d req.op_status=%d\n", j, missing[j], gop_completed_successfully(req_list[j].gop));
-            if (ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ) != NULL) {
+            log_printf(15, "missing[%d]=%d req.op_status=%d\n", j, missing[j], (req_list[j].gop) ? gop_completed_successfully(req_list[j].gop) : -123);
+            db = db_working[i];
+            if (ds_get_cap(db->ds, db->cap, DS_CAP_READ) != NULL) {
                 block_status[i] = 2;  //** Mark the block for padding
-                data_block_auto_warm(b->block[i].data);  //** Add it to be auto-warmed
-                b->block[i].data->rid_key = req_list[j].rid_key;
-                tbx_atomic_inc(b->block[i].data->ref_count);
+                data_block_auto_warm(db);  //** Add it to be auto-warmed
+                b->block[i].data = db;
+                db->rid_key = req_list[j].rid_key;
+                tbx_atomic_inc(db->ref_count);
+                b->block[i].read_err_count = 0;
+                b->block[i].write_err_count = 0;
                 req_list[j].rid_key = NULL; //** Cleanup
+                db_working[i] = NULL;
+
+                //** Make the cleanup operations
+                if (db_orig[i]) {
+                    db_orig[i]->attr_stack = NULL;  //** This is now used by the new allocation
+                    if (args->qs) {
+                        g = ds_remove(s->ds, da, ds_get_cap(db_orig[i]->ds, db_orig[i]->cap, DS_CAP_MANAGE), timeout);
+                        gop_opque_add(args->qs, g);  //** This gets placed on the success queue so we can roll it back if needed
+                    }
+                    if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
+                    tbx_stack_push(s->db_cleanup, db_orig[i]);   //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
+                }
                 err++;
             } else {  //** Make sure we exclude the RID key on the next round due to the failure
                 if (req_list[j].rid_key != NULL) {
@@ -766,6 +775,12 @@ oops:
     for (i=0; i<n_devices; i++) {
         if (hints_list[i].local_rsq != NULL) {
             rs_query_destroy(s->rs, hints_list[i].local_rsq);
+        }
+        if (db_working[i] != NULL) {
+            db_working[i]->attr_stack = NULL;  //** This is still used by yhe original data block
+            if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
+            tbx_stack_push(s->db_cleanup, db_working[i]);   //** Dump the unused data block for destruction
+            
         }
     }
     if (cleanup_stack != NULL) tbx_stack_free(cleanup_stack, 1);
