@@ -144,7 +144,7 @@ lio_cache_t *round_robin_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, d
     lio_cache_t *c;
     cache_rr_t *cp;
     cache_load_t *cache_create;
-    char *ctype;
+    char *ctype, *cs;
     int i;
 
     //** Create the default structure
@@ -158,7 +158,9 @@ lio_cache_t *round_robin_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, d
 
     cache_lock(c);
     cp->n_cache = tbx_inip_get_integer(fd, cp->section, "n_cache", cp->n_cache);
-    cp->child_section = tbx_inip_get_string(fd, cp->section, "child", cp->child_section);
+    cs = cp->child_section;
+    cp->child_section = tbx_inip_get_string(fd, cp->section, "child", cs);
+    if (cs) free(cs);
     ctype = tbx_inip_get_string(fd, cp->child_section, "type", NULL);
 
     tbx_type_malloc(cp->child, lio_cache_t *, cp->n_cache);
