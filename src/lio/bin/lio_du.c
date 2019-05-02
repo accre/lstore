@@ -40,6 +40,7 @@ typedef struct {
     int64_t bytes;
     int64_t count;
     int ftype;
+    int flen;
 } du_entry_t;
 
 lio_path_tuple_t tuple;
@@ -47,12 +48,35 @@ lio_path_tuple_t tuple;
 int base = 1;
 
 //*************************************************************************
+// make_fname - Makes the fname for printing and comparison.
+//    Simply adds atrailing '/' if it's a directory.  fname may be
+//    freed if needed.
+//*************************************************************************
+
+char *make_fname(char *fname, int ftype)
+{
+    char *fn;
+    int n;
+
+    if (ftype & OS_OBJECT_DIR_FLAG) {
+        n = strlen(fname);
+        tbx_type_malloc(fn, char, n+2);
+        memcpy(fn, fname, n);
+        fn[n] = '/';
+        fn[n+1] = 0;
+        free(fname);
+        return(fn);
+    }
+
+    return(fname);
+}
+
+//*************************************************************************
 // ls_format_entry - Prints an LS entry
 //*************************************************************************
 
 void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 {
-    char *is_dir;
     char ppsize[128];
     double fsize;
     long int n;
@@ -64,13 +88,12 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
         tbx_stk_pretty_print_double_with_scale(base, fsize, ppsize);
     }
 
-    is_dir = (de->ftype & OS_OBJECT_DIR_FLAG) ? "/" : "";
     if (sumonly > 0) {
         n = ((de->ftype & OS_OBJECT_DIR_FLAG) > 0) ? de->count : 1;
         if (sumonly == 2) n = de->count;
-        info_printf(ifd, 0, "%10s  %10ld  %s%s\n", ppsize, n, de->fname, is_dir);
+        info_printf(ifd, 0, "%10s  %10ld  %s\n", ppsize, n, de->fname);
     } else {
-        info_printf(ifd, 0, "%10s  %s%s\n", ppsize, de->fname, is_dir);
+        info_printf(ifd, 0, "%10s  %s\n", ppsize, de->fname);
     }
 
     return;
@@ -222,10 +245,11 @@ int main(int argc, char **argv)
                     goto next_top;  //** Ignoring links
                 }
 
-                log_printf(15, "sumonly inserting fname=%s\n", fname);
                 tbx_type_malloc_clear(de, du_entry_t, 1);
-                de->fname = fname;
+                de->fname = make_fname(fname, ftype);
+                log_printf(15, "sumonly inserting fname=%s\n", fname);
                 de->ftype = ftype;
+                de->flen = strlen(de->fname);
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
                 tbx_list_insert(sum_table, de->fname, de);
@@ -264,23 +288,27 @@ next_top:
                 goto next;  //** Ignoring links
             }
 
-            if ((sumonly == 1) && ((ftype & OS_OBJECT_FILE_FLAG) > 0)) {
-                bytes = 0;
-                if (val != NULL) sscanf(val, I64T, &bytes);
+            if (sumonly == 1) {
+                if (ftype & OS_OBJECT_FILE_FLAG) {
+                    bytes = 0;
+                    if (val != NULL) sscanf(val, I64T, &bytes);
 
-                lit = tbx_list_iter_search(sum_table, NULL, 0);
-                while ((tbx_list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0) {
-                    if ((strncmp(de->fname, fname, strlen(de->fname)) == 0) && ((de->ftype & OS_OBJECT_DIR_FLAG) > 0)) {
-                        log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
-                        de->bytes += bytes;
-                        de->count++;
+                    lit = tbx_list_iter_search(sum_table, NULL, 0);
+                    while ((tbx_list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0) {
+                        if ((strncmp(de->fname, fname, de->flen) == 0) && ((de->ftype & OS_OBJECT_DIR_FLAG) > 0)) {
+                            log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
+                            de->bytes += bytes;
+                            de->count++;
+                            break;
+                        }
                     }
                 }
                 free(fname);
             } else {
                 tbx_type_malloc_clear(de, du_entry_t, 1);
-                de->fname = fname;
+                de->fname = make_fname(fname, ftype);
                 de->ftype = ftype;
+                de->flen = strlen(de->fname);
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
 
