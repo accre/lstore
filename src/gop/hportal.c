@@ -52,12 +52,6 @@ typedef struct hportal_t hportal_t;
 #define CONN_GOP_RETRY     9   //** GOP should be retried (from conn)
 #define CONN_GOP_DONE     10   //** GOP has been processed (from conn)
 
-//typedef struct {
-//    int cmd;
-//    gop_op_generic_t *gop;
-//} hpc_cmd_t;
-
-
 static char *hc_reasons[4] = { "GOP_ERR  ", "IDLE     ", "CLOSE_REQ", "FAIL_CONN" };
 
 typedef struct {
@@ -87,6 +81,20 @@ typedef struct {
     hc_history_ele_t *hc;
 } hc_history_t;
 
+typedef struct {
+    char *skey;             //** Host name
+    int ns_id;              //** Network ID
+    int64_t gid;            //** GOP id
+    gop_op_status_t status; //** Reason for close (0=gop, 1=idle, 2=close request, 3=failed connection
+    apr_time_t retry_time;  //** REtry time
+} retry_history_ele_t;
+
+typedef struct {
+    int max_size;
+    int slot;
+    retry_history_ele_t *rh;
+} retry_history_t;
+
 struct hconn_t {     //** Host connection structure
     hportal_t *hp;          //** Host portal
     tbx_ns_t *ns;           //** Network connection
@@ -104,6 +112,8 @@ struct hconn_t {     //** Host connection structure
     int64_t gop_last_workload; //** Last processed GOP workload
     apr_time_t gop_last_dt;    //** Processing time for last GOP
     apr_time_t start_time;     //** Connection start time
+    apr_time_t last_update_time;     //** Last time the central thread processed a command
+    gop_op_status_t last_status;  //** Last commands status
     int state;              //** Connection state 0=startup, 1=ready, 2=closing
     int reason;             //** Reason for closing
 };
@@ -115,6 +125,7 @@ struct hportal_t {   //** Host portal container
     int64_t n_coalesced;     //** Number of commands merged together
     int64_t cmds_processed;  //** Number of commands processed
     int64_t cmds_submitted;  //** # of tasks submitted
+    int64_t cmds_retried;    //** Number of times commands were retried
     int64_t workload_pending;//** Amount of work on the pending que
     int64_t workload_executing;//** Amount of work being processed by the connections
     int64_t avg_workload;      //** Running average command workload
@@ -160,6 +171,8 @@ struct gop_portal_context_t {             //** Handle for maintaining all the ec
     tbx_atomic_int_t dump_running; //** Dump stats running if = 1
     int hc_history_size;       //** Size of the connection history
     hc_history_t *hc_history;  //** Connection history
+    int retry_history_size;       //** Size of the retry history
+    retry_history_t *retry_history;  //** Retry history
     void *arg;
     gop_portal_fn_t *fn;       //** Actual implementaion for application
 };
@@ -178,7 +191,8 @@ static gop_portal_context_t  hpc_default_options = {
     .dt_connect = apr_time_from_sec(10),
     .max_workload = 10*1024*1024,
     .mix_latest_fraction = 0.5,
-    .hc_history_size = 1000
+    .hc_history_size = 1000,
+    .retry_history_size = 1000
 };
 
 
@@ -405,7 +419,6 @@ void hc_history_add(hc_history_t *h, hconn_t *hc)
     h->slot++;
 }
 
-
 //************************************************************************
 // hc_history_print - Prints the connection history
 //************************************************************************
@@ -426,6 +439,82 @@ void hc_history_print(hc_history_t *h, apr_time_t dt_start, FILE *fd)
         }
     }
 }
+
+
+//************************************************************************
+// retry_history_create - Creates the Retry history
+//************************************************************************
+
+retry_history_t *retry_history_create(int n)
+{
+    retry_history_t *h;
+    
+    tbx_type_malloc_clear(h, retry_history_t, 1);
+    h->max_size = n;
+    tbx_type_malloc_clear(h->rh, retry_history_ele_t, h->max_size);
+
+    return(h);
+}
+
+//************************************************************************
+// retry_history_destroy - Destroys the retry history
+//************************************************************************
+
+void retry_history_destroy(retry_history_t *h)
+{
+    int i;
+    
+    for (i=0; i<h->max_size; i++) {
+        if (h->rh[i].skey) free(h->rh[i].skey);
+    }
+    
+    free(h->rh);
+    free(h);
+}
+
+
+//************************************************************************
+// retry_history_add - Add the GOP retry to the history
+//************************************************************************
+
+void retry_history_add(retry_history_t *h, gop_op_generic_t *gop, hconn_t *hc)
+{
+    retry_history_ele_t *r;
+    
+    r = &(h->rh[h->slot % h->max_size]);
+    if (r->skey) free(r->skey);
+
+    r->skey = strdup(hc->hp->skey);
+    r->ns_id = tbx_ns_getid(hc->ns);
+    r->gid = gop_id(gop);
+    r->status = gop_get_status(gop);
+    r->retry_time = apr_time_now();
+    
+    //** Update the slot
+    h->slot++;
+}
+
+//************************************************************************
+// retry_history_print - Prints the Retry history
+//************************************************************************
+
+void retry_history_print(retry_history_t *h, apr_time_t dt_start, FILE *fd)
+{
+    int i, slot;
+    retry_history_ele_t *r;
+    char ppbuf1[100];
+    
+    fprintf(fd, "GOP Retry History (size=%d, slot=%d) ---------------------------------------\n", h->max_size, h->slot);
+    for (i=0; i<h->max_size; i++) {
+        slot = (i+h->slot) % h->max_size;
+        r = &(h->rh[slot]);
+        if (r->skey) {
+            fprintf(fd, "%s:  gid: " I64T " host: %s  ns: %d status: (%d, %d)\n", tbx_stk_pretty_print_time(r->retry_time-dt_start, 0, ppbuf1), r->gid, r->skey, 
+                r->ns_id, r->status.op_status, r->status.error_code);
+        }
+    }
+}
+
 
 //************************************************************************
 // determine_bandwidths - Determine the various HP bandwidths and optionally
@@ -494,7 +583,7 @@ void dump_stats(gop_portal_context_t *hpc, FILE *fd)
     char *label[3] = {"HP Min   ", "HP Median", "HP Max   "};
     hconn_t *hc;
     double avg_bw, total_avg_bw;
-    apr_time_t total_avg_dt;
+    apr_time_t total_avg_dt, dt;
     int64_t total_avg_wl;
     char ppbuf1[100];
     char ppbuf2[100];
@@ -516,10 +605,10 @@ void dump_stats(gop_portal_context_t *hpc, FILE *fd)
         apr_hash_this(hi, NULL, NULL, (void **)&hp);
 
         fprintf(fd, "    Host: %s\n", hp->skey);
-        fprintf(fd, "        Workload - pending: %s executing: %s,  Commands processed: " I64T "  Submitted: " I64T "  Tasks Queued: %d  Max Queued: %d  Merged Commands: " I64T "\n",
+        fprintf(fd, "        Workload - pending: %s executing: %s,  Commands processed: " I64T "  Submitted: " I64T " Retries: " I64T "  Tasks Queued: %d  Max Queued: %d  Merged Commands: " I64T "\n",
             tbx_stk_pretty_print_double_with_scale(1024, hp->workload_pending, ppbuf1),
             tbx_stk_pretty_print_double_with_scale(1024, hp->workload_executing, ppbuf2),
-            hp->cmds_processed, hp->cmds_submitted, tbx_stack_count(hp->pending), hp->max_pending, hp->n_coalesced);
+            hp->cmds_processed, hp->cmds_submitted, hp->cmds_retried, tbx_stack_count(hp->pending), hp->max_pending, hp->n_coalesced);
 
         fprintf(fd, "        Conn: %d  Stable: %d  Pending: %d  Limbo: %d  Dead: %d  -- Avg  Workload: %s DT: %s Bandwidth: %s/s\n",
             tbx_stack_count(hp->conn_list), hp->stable_conn, hp->pending_conn, hp->limbo_conn, (hp->dead > 0) ? 1 : 0,
@@ -534,9 +623,12 @@ void dump_stats(gop_portal_context_t *hpc, FILE *fd)
         }
         for (hc = tbx_stack_bottom_first(hp->conn_list), i=0; hc != NULL; hc = tbx_stack_next_up(hp->conn_list), i++) {
             n_hc++;
-            fprintf(fd, "        %d --  Commands processed: " I64T "  Workload: %s  Pending: " I64T "  State: %d -- GOP: DT: %s  Workload: %s\n",
+            dt = (hc->last_update_time > 0) ? apr_time_now() - hc->last_update_time : 0;
+            fprintf(fd, "        %d --  Commands processed: " I64T "  Workload: %s  Pending: " I64T "  State: %d  Last: %s  --  GOP: DT: %s  Workload: %s status: (%d, %d)\n",
                  tbx_ns_getid(hc->ns), hc->cmds_processed, tbx_stk_pretty_print_double_with_scale(1024, hc->workload, ppbuf1), hc->ntasks, hc->state,
-                 tbx_stk_pretty_print_time(hc->gop_last_dt, 0, ppbuf2), tbx_stk_pretty_print_double_with_scale(1024, hc->gop_last_workload, ppbuf3));
+                 tbx_stk_pretty_print_time(dt, 0, ppbuf4),
+                 tbx_stk_pretty_print_time(hc->gop_last_dt, 0, ppbuf2), tbx_stk_pretty_print_double_with_scale(1024, hc->gop_last_workload, ppbuf3), 
+                 hc->last_status.op_status, hc->last_status.error_code);
         }
     }
 
@@ -562,6 +654,9 @@ void dump_stats(gop_portal_context_t *hpc, FILE *fd)
     fprintf(fd, "\n");
 
     hc_history_print(hpc->hc_history, hpc->dt_start, fd);
+    fprintf(fd, "\n");
+
+    retry_history_print(hpc->retry_history, hpc->dt_start, fd);
     fprintf(fd, "\n");
     
     tbx_atomic_set(hpc->dump_running, 0);  //** Signal that we are finished
@@ -704,16 +799,16 @@ void hp_fail_all_tasks(hportal_t *hp, gop_op_status_t err_code)
 //  hp_gop_retry - Either retries the GOP or fails it if needed
 //*************************************************************************
 
-void hp_gop_retry(hconn_t *hc, gop_op_generic_t *gop)
+void hp_gop_retry(hconn_t *hc, gop_op_generic_t *gop, int count)
 {
     hpc_cmd_t cmd;
 
-    gop->op->cmd.retry_count--;
+    gop->op->cmd.retry_count += count;
     if (gop->op->cmd.retry_count <= 0) {  //** No more retries left so fail the gop
         cmd.gop_workload = gop->op->cmd.workload;
         cmd.gop_dt = 0;
         cmd.hc = hc;
-        cmd.ptr = gop;
+        cmd.ptr = NULL;
         cmd.cmd = CONN_GOP_DONE;
         gop_mark_completed(gop, gop_failure_status);
         tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
@@ -952,10 +1047,11 @@ log_printf(15, "Got a CONN_CLOSE_REQUEST from hp=%s.  Sending official CONN_CLOS
                 cmd.hc->ntasks--;
                 cmd.hc->workload -= cmd.hc->workload;
                 cmd.hc->hp->workload_executing -= cmd.gop_workload;
-                cmd.hc->hp->workload_pending += cmd.gop_workload;
+                cmd.hc->hp->cmds_retried++;
                 cmd.hc->hp->cmds_submitted--;  //** Retrying the submit
-                tbx_stack_move_to_bottom(cmd.hc->hp->pending);
-                tbx_stack_insert_below(cmd.hc->hp->pending, cmd.ptr);
+                cmd.hc->last_update_time = apr_time_now();
+                retry_history_add(hpc->retry_history, (gop_op_generic_t *)cmd.ptr, cmd.hc);
+                route_gop(hpc, (gop_op_generic_t *)cmd.ptr);
                 break;
             case CONN_GOP_DONE:
                 hp = cmd.hc->hp;
@@ -963,6 +1059,7 @@ log_printf(15, "Got a CONN_CLOSE_REQUEST from hp=%s.  Sending official CONN_CLOS
                 cmd.hc->workload -= cmd.gop_workload;
                 cmd.hc->gop_last_workload = cmd.gop_workload;
                 cmd.hc->gop_last_dt = cmd.gop_dt;
+                cmd.hc->last_update_time = apr_time_now();
                 hp->avg_workload = (hp->avg_workload != 0) ? hpc->mix_latest_fraction * cmd.gop_workload + (1-hpc->mix_latest_fraction)*hp->avg_workload : cmd.gop_workload;
                 hp->avg_dt = (hp->avg_dt != 0) ? hpc->mix_latest_fraction * cmd.gop_dt + (1-hpc->mix_latest_fraction)*hp->avg_dt : cmd.gop_dt;
                 cmd.hc->hp->workload_executing -= cmd.gop_workload;
@@ -1062,6 +1159,7 @@ void *hportal_thread(apr_thread_t *th, void *arg)
     apr_time_t dead_next_check;
 
     hpc->hc_history = hc_history_create(hpc->hc_history_size);
+    hpc->retry_history = retry_history_create(hpc->retry_history_size);
     hpc->dt_start = apr_time_now();
     
     dead_next_check = apr_time_now() + apr_time_from_sec(60);
@@ -1088,8 +1186,9 @@ void *hportal_thread(apr_thread_t *th, void *arg)
         hp_destroy(hp);
     }
 
-    //** Clean up the connection history
+    //** Clean up the histories
     hc_history_destroy(hpc->hc_history);
+    retry_history_destroy(hpc->retry_history);
     
     return(NULL);
 }
@@ -1191,10 +1290,13 @@ log_printf(15, "hp=%s sending CONN_CLOSE_REQUEST\n", hp->skey);
         tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
 
         //** Wait until I get an official close request
-        //** In the meantime just dump all the requests bak on the que
+        //** In the meantime just dump all the requests back on the que
+        //** The initial command that caused a problem is sent on to the recv
+        //** thread where it's retry WILL get decremented.  We won't do that
+        //** for the rest of these commands since they are innocent of causing the issue
         while (tbx_que_get(hc->incoming, &cmd, TBX_QUE_BLOCK) == 0) {
             if (cmd.cmd == CONN_CLOSE) break;
-            hp_gop_retry(hc, cmd.ptr);
+            hp_gop_retry(hc, cmd.ptr, 0);  
         }
     }
 
@@ -1222,7 +1324,7 @@ void *hc_recv_thread(apr_thread_t *th, void *data)
     gop_op_generic_t *gop;
     gop_command_op_t *hop;
     apr_time_t timeout;
-    int nbytes;
+    int nbytes, notify_hp;
     hpc_cmd_t cmd;
     gop_op_status_t status;
 
@@ -1243,6 +1345,8 @@ log_printf(15, "hp=%s CONN_READY\n", hc->hp->skey);
     status = gop_success_status;
     cmd.cmd = CONN_EMPTY;
     timeout = apr_time_from_sec(1);
+    notify_hp = 1;
+    gop = NULL;
     while (status.op_status == OP_STATE_SUCCESS) {
         cmd.cmd = CONN_EMPTY;
         nbytes = tbx_que_get(hc->internal, &cmd, timeout);
@@ -1256,14 +1360,16 @@ log_printf(15, "hp=%s get=%d cmd=%d\n", hc->hp->skey, nbytes, cmd.cmd);
             } else {
                 tbx_atomic_set(hc->recv_working, 0);  //** Flag that we're not busy either
             }
+            gop = NULL;  //** Don't want to accidentally handle it twice
             continue;
         } else if (cmd.cmd == CONN_CLOSE) {
             status = gop_failure_status;
             continue;
         } else if (cmd.status.op_status != OP_STATE_SUCCESS) {  //** Push the command back on the stack and kick out
             status = cmd.status;
-            hp_gop_retry(hc, cmd.ptr);
-            continue;
+            notify_hp = 0; //** sending thread sent the HP notification about closing
+            gop = cmd.ptr;
+            break;
         }
 
 
@@ -1276,24 +1382,28 @@ log_printf(15, "hp=%s gid=%d\n", hp->skey, gop_id(gop));
         status = (hop->recv_phase != NULL) ? hop->recv_phase(gop, ns) : status;
         hop->end_time = apr_time_now();
         cmd.status = status;
+        if (status.op_status == OP_STATE_RETRY) break; //** Kick out and handle the retry
         cmd.gop_workload = hop->workload;
         cmd.gop_dt = hop->end_time - hop->start_time;
         cmd.cmd = CONN_GOP_DONE;
         cmd.hc = hc;
 log_printf(15, "hp=%s gid=%d status=%d\n", hp->skey, gop_id(gop), status.op_status);
+        hc->last_status = status;
         gop_mark_completed(gop, status);
-
+        gop = NULL;
         tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
     }
 
 
     if (cmd.cmd != CONN_CLOSE) {
-        //** Notify the hportal I want to exit
+        if (gop) hp_gop_retry(hc, gop, -1);  //** Retry or fail the task  
+        if (notify_hp) {  //** Notify the hportal I want to exit
 log_printf(15, "hp=%s sending a CONN_CLOSE_REQUEST\n", hp->skey);
-        memset(&cmd, 0, sizeof(cmd));
-        cmd.cmd = CONN_CLOSE_REQUEST;
-        cmd.hc = hc;
-        tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
+            memset(&cmd, 0, sizeof(cmd));
+            cmd.cmd = CONN_CLOSE_REQUEST;
+            cmd.hc = hc;
+            tbx_que_put(hc->outgoing, &cmd, TBX_QUE_BLOCK);
+        }
 
         //** Wait until I get an official close request
         //** In the meantime just dump all the requests back on the que
@@ -1302,7 +1412,7 @@ log_printf(15, "hp=%s sending a CONN_CLOSE_REQUEST\n", hp->skey);
             nbytes = tbx_que_get(hc->internal, &cmd, timeout);
             if (nbytes == 0) {
                 if (cmd.cmd == CONN_CLOSE) break;
-                hp_gop_retry(hc, cmd.ptr);
+                hp_gop_retry(hc, cmd.ptr, 0);
             }
             
             //** Let the sending thread know their gop is on top.
@@ -1517,7 +1627,7 @@ int64_t gop_hpc_max_workload_get(gop_portal_context_t *hpc) { return(hpc->max_wo
 
 void gop_hpc_min_bw_fraction_set(gop_portal_context_t *hpc, double d) { hpc->min_bw_fraction = d; }
 double gop_hpc_min_bw_fraction_get(gop_portal_context_t *hpc) { return(hpc->min_bw_fraction); }
-void gop_hpc_mex_latest_fraction_set(gop_portal_context_t *hpc, double d) { hpc->mix_latest_fraction = d; }
+void gop_hpc_mix_latest_fraction_set(gop_portal_context_t *hpc, double d) { hpc->mix_latest_fraction = d; }
 double gop_hpc_mix_latest_fraction_get(gop_portal_context_t *hpc) { return(hpc->mix_latest_fraction); }
 
 //************************************************************************
@@ -1539,6 +1649,7 @@ void gop_hpc_print_running_config(gop_portal_context_t *hpc, FILE *fd, int print
     fprintf(fd, "min_host_conn = %d\n", hpc->min_conn);
     fprintf(fd, "max_host_conn = %d\n", hpc->max_conn);
     fprintf(fd, "hc_history_size = %d\n", hpc->hc_history_size);
+    fprintf(fd, "retry_history_size = %d\n", hpc->retry_history_size);
     fprintf(fd, "max_workload_conn = %s\n", tbx_stk_pretty_print_int_with_scale(hpc->max_workload, text));
     fprintf(fd, "mix_latest_fraction = %s\n", tbx_stk_pretty_print_double_with_scale(1000, hpc->mix_latest_fraction, text));
     fprintf(fd, "\n");
@@ -1576,6 +1687,7 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
     hpc->dt_connect = hpc_default_options.dt_connect;
     hpc->max_workload = hpc_default_options.max_workload;
     hpc->hc_history_size = hpc_default_options.hc_history_size;
+    hpc->retry_history_size = hpc_default_options.retry_history_size;
     hpc->mix_latest_fraction = hpc_default_options.mix_latest_fraction;
     tbx_ns_timeout_set(&(hpc->dt_connect), 1, 0);
 
@@ -1607,6 +1719,7 @@ void gop_hpc_load(gop_portal_context_t *hpc, tbx_inip_file_t *fd, char *section)
     hpc->max_workload = tbx_inip_get_integer(fd, section, "max_workload_conn", hpc_default_options.max_workload);
     hpc->mix_latest_fraction = tbx_inip_get_double(fd, section, "mix_latest_fraction", hpc_default_options.mix_latest_fraction);
     hpc->hc_history_size = tbx_inip_get_integer(fd, section, "hc_history_size", hpc_default_options.hc_history_size);
+    hpc->retry_history_size = tbx_inip_get_integer(fd, section, "retry_history_size", hpc_default_options.retry_history_size);
     tbx_ns_timeout_set(&(hpc->dt_connect), 1, 0);
 }
 
