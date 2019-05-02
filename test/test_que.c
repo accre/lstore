@@ -38,6 +38,7 @@ typedef struct {
     int retries;
     int slot;
     int who;
+    int times_consumed;
 } task_t;
 
 typedef struct {
@@ -78,6 +79,7 @@ void *producer_thread(apr_thread_t *th, void *arg)
     for (i=0; i<p->ntasks; i++) {
         task[i].slot = i;
         task[i].start = apr_time_now();
+        task[i].times_consumed = 0;
     again:
         t = task + i;
         if (mode == 0) {
@@ -122,6 +124,7 @@ void *consumer_thread(apr_thread_t *th, void *arg)
         } else if (task != NULL) {
             task->end = apr_time_now();
             task->who = c->me;
+            task->times_consumed++;
             c->ntasks++;
         }
     } while (task != NULL);
@@ -151,7 +154,7 @@ int dt_compare(const void *p1, const void *p2, void *arg)
 
 int process_results(task_t *task, int ntasks, producer_t *producer, int np, consumer_t *consumer, int nc, apr_time_t runtime)
 {
-    int err, i, j, k, n, missing, nconsumed;
+    int err, i, j, k, n, missing, nconsumed, double_cnt;
     double ttime, mean, median, stddev, d;
 
     err = 0;
@@ -169,11 +172,17 @@ int process_results(task_t *task, int ntasks, producer_t *producer, int np, cons
 
     //** Generate the dt's
     missing = 0;
+    double_cnt = 0;
     ttime = 0;
     for (i=0; i<ntasks; i++) {
         if (task[i].end == 0) {
+            fprintf(stdout, "ERROR: MISSING task=%d\n", i);
             missing++;
             err = 1;
+        } else if (task[i].times_consumed != 1) {
+            fprintf(stdout, "ERROR: DOUBLE counted task=%d times_consumed=%d\n", i, task[i].times_consumed);
+            double_cnt++;
+            err = 1;        
         } else {
             task[i].dt = task[i].end - task[i].start;
             ttime += task[i].dt;
@@ -183,6 +192,10 @@ int process_results(task_t *task, int ntasks, producer_t *producer, int np, cons
     if (missing != 0) {
         err = 1;
         fprintf(stdout, "ERROR: missing some tasks! missing=%d\n", missing);
+    }
+    if (double_cnt != 0) {
+        err = 1;
+        fprintf(stdout, "ERROR: Double counted some tasks! double_cnt=%d\n", double_cnt);
     }
 
     //** Sort them
