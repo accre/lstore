@@ -34,6 +34,7 @@
 #include <tbx/list.h>
 #include <tbx/log.h>
 #include <tbx/stack.h>
+#include <tbx/string_token.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
 #include <zlib.h>
@@ -81,14 +82,17 @@ void lio_open_files_info_fn(void *arg, FILE *fd)
     lio_file_handle_t *fh;
     tbx_list_iter_t it;
     ex_id_t *fid;
-
+    char ppbuf[100];
+    double d;
+    
     fprintf(fd, "LIO Open File list ----------------------\n");
 
     lio_lock(lc);
     it = tbx_list_iter_search(lc->open_index, NULL, 0);
     tbx_list_next(&it, (tbx_list_key_t *)&fid, (tbx_list_data_t **)&fh);
     while (fh != NULL) {
-        fprintf(fd, " seg=" XIDT " fname=%s cnt=%d\n", fh->vid, fh->fname, fh->ref_count);
+        d = segment_size(fh->seg);
+        fprintf(fd, " seg=" XIDT " fname=%s  size=%s  cnt=%d\n", fh->vid, fh->fname, tbx_stk_pretty_print_double_with_scale(1000, d, ppbuf), fh->ref_count);
         tbx_list_next(&it, (tbx_list_key_t *)&fid, (tbx_list_data_t **)&fh);
     }
     lio_unlock(lc);
