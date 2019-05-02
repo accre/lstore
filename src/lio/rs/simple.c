@@ -224,7 +224,7 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
 
     log_printf(15, "rs_simple_request: START rss->n_rids=%d n_rid=%d req_size=%d fixed_size=%d ignore=%d\n", rss->n_rids, n_rid, req_size, fixed_size, ignore_fixed_err);
 
-    for (i=0; i<req_size; i++) req[i].rid_key = NULL;  //** Clear the result in case of an error
+    for (i=0; i<req_size; i++) {req[i].rid_key = NULL; req[i].gop = NULL; } //** Clear the result in case of an error
 
     apr_thread_mutex_lock(rss->lock);
     i = _rs_simple_refresh(arg);  //** Check if we need to refresh the data
@@ -281,7 +281,7 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
                 if ((kvq_local.n_unique != 0) && (kvq_local.n_pickone != 0)) {
                     log_printf(0, "Unsupported use of pickone/unique in local RSQ hints_list[%d]=%s!\n", i, hints_list[i].fixed_rid_key);
                     status.op_status = OP_STATE_FAILURE;
-                    status.error_code = RS_ERROR_FIXED_NOT_FOUND;
+                    status.error_code = RS_ERROR_EMPTY_STACK;
                     hints_list[i].status = RS_ERROR_HINTS_INVALID_LOCAL;
                     err_cnt++;
                     continue;
@@ -421,9 +421,8 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
                 } else {
                    log_printf(1, "Match fail in fixed list and no hints are provided!\n");
                 }
-                status.op_status = OP_STATE_FAILURE;
-                status.error_code = RS_ERROR_FIXED_MATCH_FAIL;
-                if ((ignore_fixed_err & 1) == 1) err_cnt++;
+                
+                if ((ignore_fixed_err & 1) == 0) err_cnt++;
                 break;  //** Skip to the next in the list
             } else {
                 found = 0;
@@ -457,6 +456,11 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
 
     if ((found == 0) || (err_cnt>0)) {
         gop_opque_free(que, OP_DESTROY);
+
+        for (i=0; i<req_size; i++) {  //** Clear the result in case of an error
+            req[i].rid_key = NULL;
+            req[i].gop = NULL;
+        }
 
         if (status.error_code == 0) {
             log_printf(1, "rs_simple_request: Can't find enough RIDs! requested=%d found=%d err_cnt=%d\n", n_rid, found, err_cnt);
