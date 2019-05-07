@@ -104,9 +104,9 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 
 int main(int argc, char **argv)
 {
-    int i, ftype, rg_mode, start_index, start_option, nosort, prefix_len;
+    int i, ftype, rg_mode, start_index, start_option, nosort, prefix_len, first;
     char *fname;
-    du_entry_t *de;
+    du_entry_t *de, *de_prev;
     tbx_list_t *table, *sum_table, *lt;
     lio_os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it;
@@ -153,6 +153,7 @@ int main(int argc, char **argv)
     ignoreln = 1;
     sumonly = 0;
     obj_types = OS_OBJECT_ANY_FLAG;
+    de_prev = NULL;
     i=1;
     do {
         start_option = i;
@@ -293,15 +294,25 @@ next_top:
                     bytes = 0;
                     if (val != NULL) sscanf(val, I64T, &bytes);
 
-                    lit = tbx_list_iter_search(sum_table, NULL, 0);
-                    while ((tbx_list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0) {
-                        if ((strncmp(de->fname, fname, de->flen) == 0) && ((de->ftype & OS_OBJECT_DIR_FLAG) > 0)) {
-                            log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
-                            de->bytes += bytes;
-                            de->count++;
-                            break;
+                    first = 1;
+                    de = de_prev; //** Seed the loop with the previous match
+                    do {
+                        if (de) {
+                            if ((strncmp(de->fname, fname, de->flen) == 0) && ((de->ftype & OS_OBJECT_DIR_FLAG) > 0)) {
+                                log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
+                                de->bytes += bytes;
+                                de->count++;
+                                de_prev = de;
+                                break;
+                            } else {
+                                de = NULL;
+                            }
                         }
-                    }
+                        if ((!de) && (first)) {
+                            first = 0;
+                            lit = tbx_list_iter_search(sum_table, NULL, 0);
+                        }
+                    } while ((tbx_list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0);
                 }
                 free(fname);
             } else {
