@@ -64,7 +64,8 @@ static lio_rs_simple_priv_t rss_default_options = {
     .dynamic_mapping = 1,
     .check_interval = 60,
     .check_timeout = 0,
-    .min_free = 1*1024*1024*1024
+    .min_free = 1*1024*1024*1024,
+    .over_avg_fraction = 0.05
 };
 
 typedef struct {
@@ -218,7 +219,7 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
     gop_opque_t *que;
     lio_rss_rid_entry_t *rse;
     lio_rsq_base_ele_t *q;
-    int slot, rnd_off, i, j, k, i_unique, i_pickone, found, err_cnt, loop, loop_end;
+    int slot, rnd_off, i, j, k, i_unique, i_pickone, found, err_cnt, loop, loop_end, avg_full_skip, full_skip_retry;
     int state, *a, *b, *op_state, unique_size;
     tbx_stack_t *stack;
 
@@ -268,7 +269,10 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
     found = 0;
 
     for (i=0; i < n_rid; i++) {
+        full_skip_retry = 0;
+disable_too_full:
         found = 0;
+        avg_full_skip = 0;
         loop_end = 1;
         query_local = NULL;
         rnd_off = tbx_random_get_int64(0, rss->n_rids-1);
@@ -326,8 +330,13 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
                 if ((change - rid_change->delta) > rid_change->tolerance) continue;  //**delta>0 if we made it here
             }
 
-            log_printf(15, "i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d\n", i, j, slot, rse->rid_key, rse->status);
+            log_printf(15, "i=%d j=%d slot=%d rse->rid_key=%s rse->status=%d rse->too_full=%d\n", i, j, slot, rse->rid_key, rse->status, rse->too_full);
             if ((rse->status != RS_STATUS_UP) && (i>=fixed_size)) continue;  //** Skip this if disabled and not in the fixed list
+            if ((i>=fixed_size) && (full_skip_retry == 0) && (rse->too_full == 1)) {  //** Skip this if disabled and not in the fixed list
+log_printf(0, "i=%d full skip full_skip_retry=%d too_full=%d\n", i, full_skip_retry, rse->too_full);
+                avg_full_skip = 1;
+                continue;
+            }
 
             tbx_stack_empty(stack, 1);
             q = query_global->head;
@@ -390,6 +399,7 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
                 free(op_state);
             }
 
+log_printf(1, "i=%d fixed_size=%d state=%d avg_full_skip=%d\n", i, fixed_size, state, avg_full_skip);
             if (op_state == NULL) {
                 log_printf(1, "rs_simple_request: ERROR processing i=%d EMPTY STACK\n", i);
                 found = 0;
@@ -421,12 +431,19 @@ gop_op_generic_t *rs_simple_request(lio_resource_service_fn_t *arg, data_attr_t 
                 } else {
                    log_printf(1, "Match fail in fixed list and no hints are provided!\n");
                 }
-                
+
                 if ((ignore_fixed_err & 1) == 0) err_cnt++;
                 break;  //** Skip to the next in the list
             } else {
                 found = 0;
             }
+        }
+
+        if ((found == 0) && (i>=fixed_size) && (avg_full_skip == 1)) {  //** Try again but disable the avg_full check
+            log_printf(1, "rs_simple_request: ERROR processing i=%d.  Attempting retry disabling average full check\n", i);
+            avg_full_skip = 0;
+            full_skip_retry = 1;
+            goto disable_too_full;
         }
 
         if ((ignore_fixed_err & 2) == 0) {   //** See if it's Ok to return a partial list
@@ -747,8 +764,11 @@ int rss_perform_check(lio_resource_service_fn_t *rs)
     gop_opque_t *q;
     gop_op_generic_t *gop;
     lio_blacklist_t *bl;
+    double total_space, used_space, avg, global_avg;
 
     log_printf(5, "START\n");
+
+    global_avg = rss->over_avg_fraction + rss->avg_fraction; //** We start off using the old avg_fraction and update it in the end
 
     //** Generate the task list
     q = gop_opque_new();
@@ -774,8 +794,10 @@ int rss_perform_check(lio_resource_service_fn_t *rs)
     bl = lio_lookup_service(rss->ess, ESS_RUNNING, "blacklist");
 
     //** Clean out any old blacklisted RIDs from a previous RS run
-   if (bl) blacklist_remove_rs_added(bl);
+    if (bl) blacklist_remove_rs_added(bl);
 
+    total_space = 1;
+    used_space = 0;
     for (gop = opque_get_next_finished(q); gop != NULL; gop = opque_get_next_finished(q)) {
         status = gop_get_status(gop);
         ce = gop_get_private(gop);
@@ -790,6 +812,13 @@ int rss_perform_check(lio_resource_service_fn_t *rs)
                 } else {
                     ce->re->status = RS_STATUS_UP;
                 }
+
+                //** check if too full
+                avg = (double)ce->re->space_used / (double)ce->re->space_total;
+                ce->re->too_full = (avg <= global_avg) ? 0 : 1;
+
+                total_space += ce->re->space_total;
+                used_space += ce->re->space_used;
             }
         } else {  //** No response so mark it as down
             if (ce->re->status != RS_STATUS_IGNORE) ce->re->status = RS_STATUS_DOWN;
@@ -804,6 +833,7 @@ int rss_perform_check(lio_resource_service_fn_t *rs)
         gop_free(gop, OP_DESTROY);
     }
 
+    rss->avg_fraction = used_space / total_space; //** Update the avg used
     gop_opque_free(q, OP_DESTROY);
     apr_thread_mutex_unlock(rss->lock);
 
@@ -913,6 +943,7 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     int i, n, err;
     tbx_inip_file_t *kf;
     lio_blacklist_t *bl;
+    double total_space, space_used, avg, global_avg;
 
     log_printf(5, "START fname=%s n_rids=%d\n", fname, rss->n_rids);
 
@@ -933,6 +964,8 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
     log_printf(15, "rs_simple_load: sl=%p\n", rss->rid_table);
 
     //** And load it
+    total_space = 1;
+    space_used = 0;
     ig = tbx_inip_group_first(kf);
     while (ig != NULL) {
         key = tbx_inip_group_get(ig);
@@ -940,6 +973,10 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
             rse = rss_load_entry(ig, bl);
             if (rse != NULL) {
                 tbx_list_insert(rss->rid_table, rse->rid_key, rse);
+                if (rse->status != RS_STATUS_IGNORE) {
+                    total_space += rse->space_total;
+                    space_used += rse->space_used;
+                }
             }
         }
         ig = tbx_inip_group_next(ig);
@@ -954,6 +991,10 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
         rss->rid_table = NULL;
         err = 1;
     } else {
+        rss->avg_fraction = space_used / total_space; //** Update the avg used
+        global_avg = rss->over_avg_fraction + rss->avg_fraction;
+
+log_printf(0, "over_avg_fraction=%lf avg_fraction=%lf global_avg=%lf used=%lf total=%lf\n", rss->over_avg_fraction, rss->avg_fraction, rss->avg_fraction, space_used, total_space);
         tbx_type_malloc_clear(rss->random_array, lio_rss_rid_entry_t *, rss->n_rids);
         it = tbx_list_iter_search(rss->rid_table, (tbx_list_key_t *)NULL, 0);
         for (i=0; i < rss->n_rids; i++) {
@@ -965,6 +1006,11 @@ int _rs_simple_load(lio_resource_service_fn_t *res, char *fname)
             }
             rse->slot = n;
             rss->random_array[n] = rse;
+
+            //** check if too full
+            avg = (double)rse->space_used / (double)rse->space_total;
+            rse->too_full = (avg <= global_avg) ? 0 : 1;
+log_printf(0, "rid_key=%s status=%d too_full=%d used=" XOT " total=" XOT " avg=%lf\n", rse->rid_key, rse->status, rse->too_full, rse->space_used, rse->space_total, avg);
         }
     }
 
@@ -1138,6 +1184,7 @@ lio_resource_service_fn_t *rs_simple_create(void *arg, tbx_inip_file_t *kf, char
     rss->check_interval = tbx_inip_get_integer(kf, section, "check_interval", rss_default_options.check_interval);
     rss->check_timeout = tbx_inip_get_integer(kf, section, "check_timeout", rss_default_options.check_timeout);
     rss->min_free = tbx_inip_get_integer(kf, section, "min_free", rss_default_options.min_free);
+    rss->over_avg_fraction = tbx_inip_get_double(kf, section, "over_avg_fraction", rss_default_options.over_avg_fraction);
 
     //** Set the modify time to force a change
     rss->modify_time = 0;

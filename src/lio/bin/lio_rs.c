@@ -63,9 +63,11 @@ void print_rid_summary(char *config, int base)
     tbx_inip_group_t *ig;
     tbx_inip_file_t *kf;
     tbx_inip_element_t *ele;
+    double pused;
     char *key, *value;
     char fbuf[20], ubuf[20], tbuf[20];
     char *state[5] = { "UP      ", "IGNORE  ", "NO_SPACE", "DOWN    ", "INVALID " };
+
     int n, n_usable;
     rid_summary_t *rsum;
     ex_off_t space_total, space_free, space_used;
@@ -130,25 +132,32 @@ void print_rid_summary(char *config, int base)
 
 
     //** Now print the summary
-    printf("        RID             State             Host                      Used       Free        Total\n");
-    printf("--------------------  --------  ------------------------------   ---------   ---------   ---------\n");
+    printf("        RID             State             Host                      Used       Free        Total    %%Used\n");
+    printf("--------------------  --------  ------------------------------   ---------   ---------   ---------  -----\n");
     it = tbx_list_iter_search(table, NULL, 0);
     while (tbx_list_next(&it, (tbx_list_key_t **)&key, (tbx_list_data_t **)&rsum) == 0) {
-        printf("%-20s  %8s  %-30s   %8s   %8s   %8s\n", rsum->rid, state[rsum->status], rsum->host,
+        pused = ((rsum->total > 0) && (rsum->used <= rsum->total)) ? 100*(double)rsum->used / (double)rsum->total : 100;
+        printf("%-20s  %8s  %-30s   %8s   %8s   %8s  %5.1lf\n", rsum->rid, state[rsum->status], rsum->host,
                tbx_stk_pretty_print_double_with_scale(base, (double)rsum->used, ubuf),
                tbx_stk_pretty_print_double_with_scale(base, (double)rsum->free, fbuf),
-               tbx_stk_pretty_print_double_with_scale(base, (double)rsum->total, tbuf));
+               tbx_stk_pretty_print_double_with_scale(base, (double)rsum->total, tbuf),
+               pused);
     }
 
-    printf("--------------------------------------------------------------   ---------   ---------   ---------\n");
-    printf("Usable Resources:%4d                                            %8s   %8s   %8s\n", n_usable,
+    printf("--------------------------------------------------------------   ---------   ---------   ---------  -----\n");
+    pused = ((up_total > 0) && (up_used <= up_total)) ? 100*(double)up_used / (double)up_total : 100;
+    printf("Usable Resources:%4d                                            %8s   %8s   %8s  %5.1lf\n", n_usable,
            tbx_stk_pretty_print_double_with_scale(base, (double)up_used, ubuf),
            tbx_stk_pretty_print_double_with_scale(base, (double)up_free, fbuf),
-           tbx_stk_pretty_print_double_with_scale(base, (double)up_total, tbuf));
-    printf("Total Resources: %4d                                            %8s   %8s   %8s\n", tbx_list_key_count(table),
+           tbx_stk_pretty_print_double_with_scale(base, (double)up_total, tbuf),
+           pused);
+
+    pused = ((space_total > 0) && (space_used <= space_total)) ? 100*(double)space_used / (double)space_total : 100;
+    printf("Total Resources: %4d                                            %8s   %8s   %8s  %5.1lf\n", tbx_list_key_count(table),
            tbx_stk_pretty_print_double_with_scale(base, (double)space_used, ubuf),
            tbx_stk_pretty_print_double_with_scale(base, (double)space_free, fbuf),
-           tbx_stk_pretty_print_double_with_scale(base, (double)space_total, tbuf));
+           tbx_stk_pretty_print_double_with_scale(base, (double)space_total, tbuf),
+           pused);
 
     tbx_list_destroy(table);
 
@@ -229,7 +238,7 @@ int main(int argc, char **argv)
             char *config = rs_get_rid_config(lio_gc->rs);
 
             printf("Map Version: %d  Status Version: %d\n", me.map_version, me.status_version);
-            printf("--------------------------------------------------------------------------------------------------\n");
+            printf("---------------------------------------------------------------------------------------------------------\n");
 
             if (config == NULL) {
                 printf("ERROR NULL config!\n");
@@ -241,7 +250,7 @@ int main(int argc, char **argv)
                 free(config);
             }
 
-            printf("--------------------------------------------------------------------------------------------------\n");
+            printf("---------------------------------------------------------------------------------------------------------\n");
         }
     } while (watch == 1);
 
