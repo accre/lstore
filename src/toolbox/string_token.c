@@ -491,7 +491,9 @@ char *tbx_stk_pretty_print_double_with_scale(int base, double value, char *buffe
 
     n = value;
     for (i=0; i<7; i++) {
-        if (fabs(n) < base) break;
+        if (fabs(n) < base) {
+            if (fabs(n) < 1000) break;
+        }
         n = n / base;
     }
 
