@@ -1099,6 +1099,7 @@ typedef struct {
     char *buffer;
     lio_copy_hint_t hints;
     lio_segment_rw_hints_t *rw_hints;
+    int truncate;
 } lio_cp_fn_t;
 
 //***********************************************************************
@@ -1121,7 +1122,7 @@ gop_op_status_t lio_cp_local2lio_fn(void *arg, int id)
         tbx_type_malloc(buffer, char, bufsize+1);
     }
 
-    status = gop_sync_exec_status(segment_put_gop(lfh->lc->tpc_unlimited, lfh->lc->da, op->rw_hints, ffd, lfh->seg, op->offset, op->len, bufsize, buffer, 1, 3600));
+    status = gop_sync_exec_status(segment_put_gop(lfh->lc->tpc_unlimited, lfh->lc->da, op->rw_hints, ffd, lfh->seg, op->offset, op->len, bufsize, buffer, op->truncate, 3600));
     tbx_atomic_set(lfh->modified, 1); //** Flag it as modified so the new exnode gets stored
 
     //** Clean up
@@ -1132,7 +1133,7 @@ gop_op_status_t lio_cp_local2lio_fn(void *arg, int id)
 
 //***********************************************************************
 
-gop_op_generic_t *lio_cp_local2lio_gop(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, ex_off_t offset, ex_off_t len, lio_segment_rw_hints_t *rw_hints)
+gop_op_generic_t *lio_cp_local2lio_gop(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsize, char *buffer, ex_off_t offset, ex_off_t len, int truncate, lio_segment_rw_hints_t *rw_hints)
 {
     lio_cp_fn_t *op;
 
@@ -1144,6 +1145,7 @@ gop_op_generic_t *lio_cp_local2lio_gop(FILE *sfd, lio_fd_t *dfd, ex_off_t bufsiz
     op->len = len;
     op->sffd = sfd;
     op->dlfd = dfd;
+    op->truncate = truncate;
     op->rw_hints = rw_hints;
 
     return(gop_tp_op_new(dfd->lc->tpc_unlimited, NULL, lio_cp_local2lio_fn, (void *)op, free, 1));
@@ -1301,7 +1303,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
             status = gop_failure_status;
         } else {
             tbx_type_malloc(buffer, char, cp->bufsize+1);
-            status = gop_sync_exec_status(lio_cp_local2lio_gop(sffd, dlfd, cp->bufsize, buffer, 0, -1, cp->rw_hints));
+            status = gop_sync_exec_status(lio_cp_local2lio_gop(sffd, dlfd, cp->bufsize, buffer, 0, -1, 1, cp->rw_hints));
         }
         if (dlfd != NULL) {
             close_status = gop_sync_exec_status(lio_close_gop(dlfd));

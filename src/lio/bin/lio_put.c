@@ -34,8 +34,8 @@
 
 int main(int argc, char **argv)
 {
-    ex_off_t bufsize;
-    int err, err_close, dtype, i, start_index, start_option;
+    ex_off_t bufsize, offset, len;
+    int err, err_close, dtype, i, start_index, start_option, truncate;
     lio_fd_t *fd;
     char *buffer;
     char ppbuf[32];
@@ -45,9 +45,12 @@ int main(int argc, char **argv)
 
     if (argc < 2) {
         printf("\n");
-        printf("lio_put LIO_COMMON_OPTIONS [-b bufsize] dest_file\n");
+        printf("lio_put LIO_COMMON_OPTIONS [-b bufsize] [-o offset len] [--no-truncate] dest_file\n");
         lio_print_options(stdout);
         printf("    -b bufsize         - Buffer size to use. Units supported (Default=%s)\n", tbx_stk_pretty_print_int_with_scale(bufsize, ppbuf));
+        printf("    -o offset len      - Place the data starting at the provided offset and length.\n");
+        printf("                         If the length is -1 then all data is stored (default). Units are supported\n");
+        printf("    --no-truncate      - Don't truncate the file. Defaults to truncating the file\n");
         printf("    dest_file          - Destination file\n");
         return(1);
     }
@@ -57,6 +60,10 @@ int main(int argc, char **argv)
 
     lio_init(&argc, &argv);
 
+    offset = 0;
+    len = -1;
+    truncate = 1;
+ 
     i=1;
     do {
         start_option = i;
@@ -65,8 +72,16 @@ int main(int argc, char **argv)
             i++;
             bufsize = tbx_stk_string_get_integer(argv[i]);
             i++;
+        } else if (strcmp(argv[i], "-o") == 0) {
+            i++;
+            offset = tbx_stk_string_get_integer(argv[i]);
+            i++;
+            len = tbx_stk_string_get_integer(argv[i]);
+            i++;
+        } else if (strcmp(argv[i], "--no-truncate") == 0) {
+            i++;
+            truncate = 0;
         }
-
     } while ((start_option - i < 0) && (i<argc));
     start_index = i;
 
@@ -100,14 +115,14 @@ int main(int argc, char **argv)
         goto finished;
     }
 
-    gop_sync_exec(lio_open_gop(tuple.lc, tuple.creds, tuple.path, lio_fopen_flags("w"), NULL, &fd, 60));
+    gop_sync_exec(lio_open_gop(tuple.lc, tuple.creds, tuple.path, lio_fopen_flags("r+"), NULL, &fd, 60));
     if (fd == NULL) {
         info_printf(lio_ifd, 0, "Failed opening file!  path=%s\n", tuple.path);
         goto finished;
     }
 
     //** Do the put
-    err = gop_sync_exec(lio_cp_local2lio_gop(stdin, fd, bufsize, buffer, 0,  -1, NULL));
+    err = gop_sync_exec(lio_cp_local2lio_gop(stdin, fd, bufsize, buffer, offset, len, truncate, NULL));
     if (err != OP_STATE_SUCCESS) {
         info_printf(lio_ifd, 0, "Failed writing data!  path=%s\n", tuple.path);
     }
