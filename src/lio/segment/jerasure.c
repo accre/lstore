@@ -145,6 +145,22 @@ typedef struct {
 
 
 //***********************************************************************
+// sj_nonzero - Returns 1 if some byte is non-zero in the given buffer
+//***********************************************************************
+
+int sj_nonzero(char *buffer, int size)
+{
+    int i;
+
+    for (i=0; i<size; i++) {
+        if (buffer[i] != 0) return(1);
+    }
+
+    return(0);
+}
+
+
+//***********************************************************************
 // je_cksum_calc - Calculates a magic checksum
 //***********************************************************************
 
@@ -342,7 +358,7 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     int max_iov, skip, last_bad, tmp, oops;
     int badmap[s->n_devs], badmap_brute[s->n_devs], badmap_last[s->n_devs], bm_brute_used, used;
     int stripe_used[4], stripe_diag_size, stripe_buffer_size;
-    int stripe_start_error[4], stripe_error[4], dstripe;
+    int stripe_start_error[4], stripe_error[4], dstripe, base_stripe;
     ex_off_t nbytes, bufsize, boff, base_offset;
     tbx_tbuf_t tbuf_read, tbuf;
     char stripe_msg[4][2048], *stripe_msg_label[4];
@@ -375,8 +391,8 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     ic = si->inspect_mode & INSPECT_COMMAND_BITS;
     if ((ic == INSPECT_QUICK_REPAIR) || (ic == INSPECT_SCAN_REPAIR) || (ic == INSPECT_FULL_REPAIR)) do_fix = 1;
 
-    base_offset = sf->lo / s->data_size;
-    base_offset = base_offset * s->stripe_size_with_magic;
+    base_stripe = sf->lo / s->data_size;
+    base_offset = base_stripe * s->stripe_size_with_magic;
     nbytes = sf->hi - sf->lo + 1;
     total_stripes = nbytes / s->data_size;
     log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=%d\n", sf->lo, sf->hi, nbytes, total_stripes, s->data_size);
@@ -422,8 +438,8 @@ retry:
         nstripes = nstripes - stripe;
         ex_read.len = (ex_off_t)nstripes * s->stripe_size_with_magic;
 
-        log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "\n", stripe, nstripes, total_stripes, ex_read.offset, ex_read.len);
-        if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe, stripe+nstripes-1);
+        log_printf(0, "stripe=%d nstripes=%d total_stripes=%d offset=" XOT " len=" XOT "\n", stripe+base_stripe, nstripes, total_stripes, ex_read.offset, ex_read.len);
+        if (sf->do_print == 1) info_printf(si->fd, 1, XIDT ": checking stripes: (%d, %d)\n", segment_id(si->seg), stripe+base_stripe, stripe+base_stripe+nstripes-1);
 
         //** Read the data in
         tbx_tbuf_single(&tbuf_read, ex_read.len, buffer);
@@ -487,12 +503,23 @@ retry:
             check_magic = (s->magic_cksum == 0) ? NULL : stripe_magic;
             good_magic = memcmp(empty_magic, stripe_magic, JE_MAGIC_SIZE);
             if (good_magic == 0) {
-                log_printf(0, "Empty stripe.  empty chunks: %d magic_used=%d stripe=%d\n", magic_count[index], magic_used, stripe+i);
-                stripe_error[0] = 1;
-                if (magic_count[index] == s->n_devs) { //** Completely empty stripe so skip to the next loop
-                    used = 0;
-                    n_empty++;
-                    goto next;
+                j=0;  //** See if the data is non-zero
+                for (k=0; k < s->n_devs; k++) {
+                   if (sj_nonzero(&buffer[boff + k*s->chunk_size_with_magic + JE_MAGIC_SIZE], s->chunk_size) != 0) {
+                      j = 1;
+                      break;
+                   }
+                }
+                if (j == 1) {
+                    good_magic = 1;
+                } else {
+                    log_printf(0, "Empty stripe.  empty chunks: %d magic_used=%d stripe=%d\n", magic_count[index], magic_used, stripe+i);
+                    stripe_error[0] = 1;
+                    if (magic_count[index] == s->n_devs) { //** Completely empty stripe so skip to the next loop
+                        used = 0;
+                        n_empty++;
+                        goto next;
+                    }
                 }
             }
 
@@ -889,6 +916,28 @@ gop_op_status_t segjerase_inspect_scan(segjerase_inspect_t *si)
     return(status);
 }
 
+
+//***********************************************************************
+// _segjerase_remap_add_ranges - Remaps the byte ranges to check from the
+//     underlying driver to that used by Jerase and also merges those
+//     ranges to the existing set of ranges to check.
+//***********************************************************************
+
+void _segjerase_remap_add_ranges(segjerase_priv_t *s, tbx_stack_t *ranges, tbx_stack_t *add)
+{
+    ex_off_t *rng;
+
+    while ((rng = tbx_stack_pop(add)) != NULL) {
+        rng[0] = rng[0] / s->stripe_size_with_magic; rng[0] = rng[0] * s->data_size;
+        rng[1] = rng[1] / s->stripe_size_with_magic; rng[1] = (rng[1]+1) * s->data_size - 1;
+log_printf(0, "Adding range: " XOT " - " XOT "\n", rng[0], rng[1]);
+fprintf(stdout, "Adding range: " XOT " - " XOT "\n", rng[0], rng[1]);
+        segment_range_merge(&ranges, rng);
+    }
+    return;
+}
+
+
 //***********************************************************************
 // segjerase_inspect_func - Checks that all the segments are available and they are the right size
 //     and corrects them if requested
@@ -899,7 +948,10 @@ gop_op_status_t segjerase_inspect_func(void *arg, int id)
     segjerase_inspect_t *si = (segjerase_inspect_t *)arg;
     segjerase_priv_t *s = (segjerase_priv_t *)si->seg->priv;
     segjerase_full_t *sf;
+    ex_off_t *rng;
+    ex_off_t lo, hi, lo_stripe, hi_stripe;
     gop_op_status_t status;
+    tbx_stack_t *ranges;
     int option, total_stripes, child_replaced, loop, i, migrate_errors;
     gop_op_generic_t *gop;
     int max_loops = 10;
@@ -907,6 +959,8 @@ gop_op_status_t segjerase_inspect_func(void *arg, int id)
     info_printf(si->fd, 1, XIDT ": jerase segment maps to child " XIDT "\n", segment_id(si->seg), segment_id(s->child_seg));
     info_printf(si->fd, 1, XIDT ": segment information: method=%s data_devs=%d parity_devs=%d chunk_size=%d  used_size=" XOT " magic_cksum=%d write_errors=%d mode=%d\n",
                 segment_id(si->seg), JE_method[s->method], s->n_data_devs, s->n_parity_devs, s->chunk_size, segment_size(s->child_seg),  s->magic_cksum, s->write_errors, si->inspect_mode);
+
+    ranges = tbx_stack_new();
 
     //** Issue the inspect for the underlying LUN
     info_printf(si->fd, 1, XIDT ": Inspecting child segment...\n", segment_id(si->seg));
@@ -927,12 +981,11 @@ gop_op_status_t segjerase_inspect_func(void *arg, int id)
         goto fail;
     }
 
-    log_printf(5, "child_replaced =%d ndata=%d\n", child_replaced, s->n_parity_devs);
+    log_printf(5, "child_replaced=%d ndata=%d bad_ranges=%p\n", child_replaced, s->n_parity_devs, si->args->bad_ranges);
     total_stripes = segment_size(si->seg) / s->data_size;
 
     //** The INSPECT_QUICK_* options are handled by the LUN driver. If force_reconstruct is set then we probably need to do a scan
     option = si->inspect_mode & INSPECT_COMMAND_BITS;
-//  force_reconstruct = si->inspect_mode & INSPECT_FORCE_REPAIR;
     log_printf(5, "child_replaced=%d option=%d inspect_mode=%d INSPECT_QUICK_REPAIR=%d\n", child_replaced, option, si->inspect_mode, INSPECT_QUICK_REPAIR);
     if (((child_replaced > 0) || (s->magic_cksum == 0) || (s->write_errors > 0)) && (option == INSPECT_QUICK_REPAIR)) {
         info_printf(si->fd, 1, XIDT ": Child segment repaired or existing write errors.  Forcing a full file check.\n", segment_id(si->seg));
@@ -954,8 +1007,26 @@ gop_op_status_t segjerase_inspect_func(void *arg, int id)
         info_printf(si->fd, 1, XIDT ": Total number of stripes:%d\n", segment_id(si->seg), total_stripes);
         loop = 0;
         child_replaced = 0;
+        if (si->args->bad_ranges) {
+            _segjerase_remap_add_ranges(s, ranges, si->args->bad_ranges);
+            tbx_stack_free(si->args->bad_ranges, 1);
+            si->args->bad_ranges = NULL;
+        }
+
+        rng = tbx_stack_pop(ranges);
+        if (rng) {
+            lo = rng[0];
+            hi = rng[1];
+            free(rng);
+        } else {
+            lo = 0;
+            hi = segment_size(si->seg);
+        }
         do {
-            gop =  segjerase_inspect_full(si, 1, 0, segment_size(si->seg));
+            lo_stripe = lo / s->data_size; hi_stripe = hi / s->data_size;
+            info_printf(si->fd, 1, XIDT ": Performing full check on stripe range: (" XOT ", " XOT ")\n", segment_id(si->seg), lo_stripe, hi_stripe);
+
+            gop =  segjerase_inspect_full(si, 1, lo, hi);
             gop_waitall(gop);
             status = gop_get_status(gop);
             sf = gop_get_private(gop);
@@ -976,6 +1047,13 @@ gop_op_status_t segjerase_inspect_func(void *arg, int id)
                     status = gop_get_status(gop);
                     gop_free(gop, OP_DESTROY);
                     ///si->max_replaced += (status.error_code & INSPECT_RESULT_COUNT_MASK);  //** NOTE: This needs to be checks for edge cases.
+
+                    if (si->args->bad_ranges) {   //** See if we have any additional ranges that need repaired
+                        _segjerase_remap_add_ranges(s, ranges, si->args->bad_ranges);
+                        tbx_stack_free(si->args->bad_ranges, 1);
+                        si->args->bad_ranges = NULL;
+                    }
+
                     child_replaced = 0;
                     log_printf(5, "n_dev_rows=%d\n", si->args->n_dev_rows);
                     for (i=0; i<si->args->n_dev_rows; i++) {
@@ -995,8 +1073,15 @@ gop_op_status_t segjerase_inspect_func(void *arg, int id)
                 } else {
                     loop = 10000;  //** Kick out
                 }
-            } else {
-                loop = 10000;  //** Kick out
+            } else {  //** Successful range check so see if there is more to do
+                rng = tbx_stack_pop(ranges);
+                if (rng) {
+                    lo = rng[0];
+                    hi = rng[1];
+                    free(rng);
+                } else {
+                    loop = 10000;  //** Kick out
+                }
             }
         } while (loop < max_loops);
 
@@ -1008,6 +1093,8 @@ gop_op_status_t segjerase_inspect_func(void *arg, int id)
     }
 
 fail:
+    tbx_stack_free(ranges, 1);
+
     if (si->max_replaced > s->n_data_devs) {
         status.op_status = OP_STATE_FAILURE;
     } else if (((child_replaced > 0) && ((si->inspect_mode & INSPECT_FORCE_REPAIR) == 0)) || (migrate_errors != 0)) {
@@ -1155,7 +1242,6 @@ gop_op_generic_t *segjerase_clone(lio_segment_t *seg, data_attr_t *da, lio_segme
 
     return(gop_tp_op_new(ss->tpc, NULL, segjerase_clone_func, (void *)cop, free, 1));
 }
-
 
 //***********************************************************************
 //  segjerase_read_func - Reads the stripes
@@ -1328,6 +1414,19 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
                         if (j != s->n_data_devs) data_ok = 0;
                     } else if (memcmp(empty_magic, &(magic_key[index*JE_MAGIC_SIZE]), JE_MAGIC_SIZE) == 0) {
                         data_ok = ((magic_count[index] == s->n_devs) && (check_status.error_code < s->n_parity_devs)) ? 2 : -1;
+                        j=0;  //** See if the data is non-zero
+                        for (k=0; k < s->n_devs; k++) {
+                            if (sj_nonzero(iov[iov_start + 2*k+1].iov_base, s->chunk_size) != 0) {
+                                j = 1;
+                                break;
+                            }
+                        }
+
+                        if (j == 0) { //** No data
+                            data_ok = 2;
+                        } else {  //** Got some non-zero data
+                            data_ok = ((magic_count[index] == s->n_devs) && (check_status.error_code == 0)) ? 1 : 0;
+                        }
                     }
 
                     do_recover = 0;
@@ -1402,6 +1501,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
                         tbx_tbuf_copy(&straddle_tbuf, 0, sw->buffer, straddle_offset[m+k], s->data_size, 1);
                     }
                 }
+
                 gop_free(gop, OP_DESTROY);
             }
 
