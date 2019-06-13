@@ -391,8 +391,9 @@ gop_op_status_t segjerase_inspect_full_func(void *arg, int id)
     ic = si->inspect_mode & INSPECT_COMMAND_BITS;
     if ((ic == INSPECT_QUICK_REPAIR) || (ic == INSPECT_SCAN_REPAIR) || (ic == INSPECT_FULL_REPAIR)) do_fix = 1;
 
-    base_stripe = sf->lo / s->data_size;
-    base_offset = base_stripe * s->stripe_size_with_magic;
+    nbytes = sf->lo / s->data_size;
+    base_stripe = nbytes;
+    base_offset = (ex_off_t)base_stripe * (ex_off_t)s->stripe_size_with_magic;
     nbytes = sf->hi - sf->lo + 1;
     total_stripes = nbytes / s->data_size;
     log_printf(0, "lo=" XOT " hi= " XOT " nbytes=" XOT " total_stripes=%d data_size=%d\n", sf->lo, sf->hi, nbytes, total_stripes, s->data_size);
