@@ -31,9 +31,11 @@
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <tbx/append_printf.h>
 #include <tbx/assert_result.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
+#include <tbx/string_token.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
 
@@ -410,10 +412,15 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
 
     nbytes = sc->len;
     status = gop_success_status;
+    dend = 0;
 
     //** Go ahead and reserve the space in the destintaion
-    dend = sc->dest_offset + nbytes;
-    gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
+    if (nbytes > 0) {
+        if (sc->truncate == 1) {
+            dend = sc->dest_offset + nbytes;
+            gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
+        }
+    }
 
     //** Read the initial block
     rpos = 0;
@@ -426,7 +433,7 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
 
     wlen = 0;
     rpos += rlen;
-    nbytes -= rlen;
+    if (nbytes > 0) nbytes -= rlen;
     log_printf(0, "FILE fd=%p bufsize=" XOT " rlen=" XOT " nbytes=" XOT "\n", sc->fd, bufsize, rlen, nbytes);
 
     loop_start = apr_time_now();
@@ -486,7 +493,7 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
             }
             rlen = got;
             rpos += rlen;
-            nbytes -= rlen;
+            if (nbytes > 0) nbytes -= rlen;
         }
 
         //** Wait for it to complete
@@ -494,7 +501,7 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
         dt_loop = apr_time_now() - loop_start;
         dt_loop /= (double)APR_USEC_PER_SEC;
 
-        log_printf(1, "dt_loop=%lf  dt_file=%lf\n", dt_loop, dt_file);
+        log_printf(1, "dt_loop=%lf  dt_file=%lf nleft=" XOT " rlen=" XOT " err=%d\n", dt_loop, dt_file, nbytes, rlen, err);
 
         if (err != OP_STATE_SUCCESS) {
             log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
@@ -503,7 +510,7 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
             goto finished;
         }
         gop_free(gop, OP_DESTROY);
-    } while (rlen > 0);
+    } while ((rlen > 0) && (nbytes != 0));
 
     if (sc->truncate == 1) {  //** Truncate if wanted
         gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, wpos, sc->timeout));
@@ -542,3 +549,178 @@ gop_op_generic_t *segment_put_gop(gop_thread_pool_context_t *tpc, data_attr_t *d
     return(gop_tp_op_new(tpc, NULL, segment_put_gop_func, (void *)sc, free, 1));
 }
 
+//*******************************************************************************
+// segment_range_print - Prints the byte range list
+//*******************************************************************************
+
+tbx_stack_t *segment_string2range(char *string, char *range_delimiter)
+{
+    tbx_stack_t *range_stack = NULL;
+    char *token, *bstate;
+    ex_off_t *rng, *prng;
+    int fin, good;
+
+    if (string == NULL) return(NULL);
+    token = strdup(string);
+    bstate = NULL;
+
+    do {
+        tbx_type_malloc(rng, ex_off_t, 2);
+        good = 0;
+        if (sscanf(tbx_stk_escape_string_token((bstate==NULL) ? token : NULL, ":", '\\', 0, &bstate, &fin), XOT, &rng[0]) != 1) break;
+        if (sscanf(tbx_stk_escape_string_token(NULL, range_delimiter, '\\', 0, &bstate, &fin), XOT, &rng[1]) != 1) break;
+        if (rng[0] <= rng[1]) { //** Validate the range
+            if (prng) {  //** And make sure it starts after the previous range
+                if (prng[1] < rng[0]) good = 1;
+            } else {
+                good = 1;
+            }
+
+            if (good == 1) {
+                if (!range_stack) range_stack = tbx_stack_new();
+                tbx_stack_push(range_stack, rng);
+                prng = rng;  //** Track the previous range
+            }
+        } else {
+            break;
+        }
+    } while (fin == 0);
+
+    free(token);
+    if (!good) free(rng);
+
+    return(range_stack);
+}
+//*******************************************************************************
+// segment_range2string - Prints the byte range list
+//*******************************************************************************
+
+char *segment_range2string(tbx_stack_t *range_stack, char *range_delimiter)
+{
+    ex_off_t *rng;
+    tbx_stack_ele_t *cptr;
+    char *string;
+    int used, bufsize;
+
+    if (range_stack == NULL) return(NULL);
+
+    bufsize = tbx_stack_count(range_stack)*(2*20+2);
+    tbx_type_malloc(string, char, bufsize);
+    string[0] = 0;
+    used = 0;
+    cptr = tbx_stack_get_current_ptr(range_stack);
+    tbx_stack_move_to_top(range_stack);
+    while ((rng = tbx_stack_get_current_data(range_stack)) != NULL) {
+        tbx_append_printf(string, &used, bufsize, XOT":" XOT "%s", rng[0], rng[1], range_delimiter);
+        tbx_stack_move_down(range_stack);
+    }
+
+    tbx_stack_move_to_ptr(range_stack, cptr);
+
+    return(string);
+}
+
+//*******************************************************************************
+//  _segment_range_collapse - Collapses the byte ranges.  Starts processing
+//    from the current range and iterates if needed.
+//*******************************************************************************
+
+void _segment_range_collapse(tbx_stack_t *range_stack)
+{
+    ex_off_t *rng, *trng, hi1;
+    int more;
+
+    trng = tbx_stack_get_current_data(range_stack);  //** This is the range just expanded
+    hi1 = trng[1]+1;
+
+    tbx_stack_move_down(range_stack);
+    more = 1;
+    while (((rng = tbx_stack_get_current_data(range_stack)) != NULL) && (more == 1)) {
+        if (hi1 >= rng[0]) { //** Got an overlap so collapse
+            if (rng[1] > trng[1]) {
+                trng[1] = rng[1];
+                more = 0;  //** Kick out this is the last range
+            }
+            tbx_stack_delete_current(range_stack, 0, 1);
+        } else {
+            more = 0;
+        }
+    }
+
+    log_printf(5, "n_ranges=%d\n", tbx_stack_count(range_stack));
+}
+
+//*******************************************************************************
+// segment_range_add - Adds and merges the range w/ existing ranges
+//*******************************************************************************
+
+void segment_range_merge(tbx_stack_t **range_stack_ptr, ex_off_t *new_rng)
+{
+    ex_off_t *rng, *prng, trng[2];
+    ex_off_t lo, hi;
+    tbx_stack_t *range_stack;
+
+    if (!(*range_stack_ptr)) *range_stack_ptr = tbx_stack_new();
+    range_stack = *range_stack_ptr;
+
+    //** If an empty stack can handle it quickly
+    if (tbx_stack_count(range_stack) == 0) {
+        tbx_stack_push(range_stack, new_rng);
+        return;
+    }
+
+    //** Find the insertion point
+    lo = new_rng[0]; hi = new_rng[1];
+    tbx_stack_move_to_top(range_stack);
+    prng = NULL;
+    while ((rng = tbx_stack_get_current_data(range_stack)) != NULL) {
+        if (lo <= rng[0]) break;  //** Got it
+        prng = rng;
+        tbx_stack_move_down(range_stack);
+    }
+
+    if (prng == NULL) {  //** Fudge to get proper logic
+        trng[0] = 12345;
+        trng[1] = lo - 10;
+        prng = trng;
+    }
+
+    if (lo <= prng[1]+1) { //** Expand prev range
+        if (prng[1] < hi) {
+            prng[1] = hi;  //** Extend the range
+            if (rng != NULL) {  //** Move back before collapsing.  Otherwise we're at the end and we've already extended the range
+                tbx_stack_move_up(range_stack);
+                _segment_range_collapse(range_stack);
+            }
+        }
+    } else if (rng != NULL) {  //** Check if overlap on curr range
+        if (rng[0] <= hi+1) {  //** Got an overlap
+            rng[0] = lo;
+            if (rng[1] < hi) {  //** Expanding on the hi side so need to check for collapse
+                rng[1] = hi;
+                _segment_range_collapse(range_stack);
+            }
+        } else {  //** No overlap.  This is a new range to insert
+            tbx_stack_insert_above(range_stack, new_rng);
+        }
+    } else {  //** Adding to the end
+        tbx_stack_move_to_bottom(range_stack);
+        tbx_stack_insert_below(range_stack, new_rng);
+    }
+
+    return;
+}
+
+//*******************************************************************************
+// segment_range_add2 - Adds and merges the range w/ existing ranges
+//*******************************************************************************
+
+void segment_range_merge2(tbx_stack_t **range_stack_ptr, ex_off_t lo, ex_off_t hi)
+{
+    ex_off_t *rng;
+
+    tbx_type_malloc(rng, ex_off_t, 2);
+    rng[0] = lo; rng[1] = hi;
+    segment_range_merge(range_stack_ptr, rng);
+    return;
+}

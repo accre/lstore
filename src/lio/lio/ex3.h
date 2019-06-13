@@ -130,6 +130,7 @@ struct lio_inspect_args_t {
     gop_opque_t *qf;         //** Cleanup Que for failure
     apr_hash_t *rid_changes;  //** List of RID space changes
     apr_thread_mutex_t *rid_lock;     //** Lock for manipulating the rid_changes table
+    tbx_stack_t *bad_ranges;      //** List of bad byte ranges
     int n_dev_rows;
     int dev_row_replaced[128];
 };

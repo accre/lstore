@@ -631,7 +631,7 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
 
     memset(hints_list, 0, sizeof(hints_list));
     memset(db_working, 0, n_devices * sizeof(lio_data_block_t));
-    
+
     loop = 0;
     kick_out = 10000;
     cleanup_stack = NULL;
@@ -640,7 +640,7 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
 
         //** Copy the original data blocks over
         for (i=0; i<n_devices; i++) db_orig[i] = b->block[i].data;
-    
+
         //** Make the fixed list mapping table
         memset(req_list, 0, sizeof(lio_rs_request_t)*n_devices);
         nbad = n_devices-1;
@@ -780,7 +780,6 @@ oops:
             db_working[i]->attr_stack = NULL;  //** This is still used by yhe original data block
             if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
             tbx_stack_push(s->db_cleanup, db_working[i]);   //** Dump the unused data block for destruction
-            
         }
     }
     if (cleanup_stack != NULL) tbx_stack_free(cleanup_stack, 1);
@@ -2117,6 +2116,9 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
                 j++;
             } while ((err > 0) && (j<5));
 
+            //** Add the range as repaired
+            segment_range_merge2(&(si->args->bad_ranges), b->seg_offset, b->seg_end);
+
             nrepaired = nlost - err;
         }
 
@@ -2187,6 +2189,9 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
                     info_printf(si->fd, 1, "%s\n", info);
                     j++;
                 } while ((err > 0) && (j<5));
+
+                //** Add the range as repaired
+                segment_range_merge2(&(si->args->bad_ranges), b->seg_offset, b->seg_end);
 
                 nmigrated += nforce - err;
             }

@@ -1015,6 +1015,7 @@ gop_op_status_t inspect_task(void *arg, int id)
     gop_opque_free(args.qf, OP_DESTROY);
 
 finished:
+    if (args.bad_ranges) tbx_stack_free(args.bad_ranges, 1);  //** Free any remaining bad ranges not processed
 
 log_printf(0, "destroying exnode. fname=%s\n", w->tuple.path);
     lio_exnode_exchange_destroy(exp);
