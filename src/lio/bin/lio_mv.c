@@ -233,10 +233,16 @@ int main(int argc, char **argv)
             if (err != OP_STATE_SUCCESS) {
                 fprintf(stderr, "ERROR renaming %s to %s!\n", mv->src_tuple.path, dtuple.path);
                 return_code = EINVAL;
-                lio_path_release(&mv->src_tuple);
-                free(mv);
-                goto finished;
             }
+            
+            //** Cleanup
+            lio_path_release(&mv->src_tuple);
+            lio_os_regex_table_destroy(mv->regex);
+            free(mv);
+            
+            //** Kick out if needed
+            if (err != OP_STATE_SUCCESS)    goto finished;
+            
         } else {
             gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, mv_fn, mv, NULL, 1);
             gop_set_private(gop, mv);

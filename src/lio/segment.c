@@ -687,6 +687,7 @@ void segment_range_merge(tbx_stack_t **range_stack_ptr, ex_off_t *new_rng)
 
     if (lo <= prng[1]+1) { //** Expand prev range
         if (prng[1] < hi) {
+            free(new_rng);
             prng[1] = hi;  //** Extend the range
             if (rng != NULL) {  //** Move back before collapsing.  Otherwise we're at the end and we've already extended the range
                 tbx_stack_move_up(range_stack);
@@ -695,6 +696,7 @@ void segment_range_merge(tbx_stack_t **range_stack_ptr, ex_off_t *new_rng)
         }
     } else if (rng != NULL) {  //** Check if overlap on curr range
         if (rng[0] <= hi+1) {  //** Got an overlap
+            free(new_rng);
             rng[0] = lo;
             if (rng[1] < hi) {  //** Expanding on the hi side so need to check for collapse
                 rng[1] = hi;

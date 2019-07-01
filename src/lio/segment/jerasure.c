@@ -931,8 +931,7 @@ void _segjerase_remap_add_ranges(segjerase_priv_t *s, tbx_stack_t *ranges, tbx_s
     while ((rng = tbx_stack_pop(add)) != NULL) {
         rng[0] = rng[0] / s->stripe_size_with_magic; rng[0] = rng[0] * s->data_size;
         rng[1] = rng[1] / s->stripe_size_with_magic; rng[1] = (rng[1]+1) * s->data_size - 1;
-log_printf(0, "Adding range: " XOT " - " XOT "\n", rng[0], rng[1]);
-fprintf(stdout, "Adding range: " XOT " - " XOT "\n", rng[0], rng[1]);
+        log_printf(1, "Adding range: " XOT " - " XOT "\n", rng[0], rng[1]);
         segment_range_merge(&ranges, rng);
     }
     return;
