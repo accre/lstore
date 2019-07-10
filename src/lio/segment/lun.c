@@ -46,6 +46,7 @@
 #include <tbx/log.h>
 #include <tbx/network.h>
 #include <tbx/random.h>
+#include <tbx/range_stack.h>
 #include <tbx/skiplist.h>
 #include <tbx/stack.h>
 #include <tbx/string_token.h>
@@ -2117,7 +2118,7 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
             } while ((err > 0) && (j<5));
 
             //** Add the range as repaired
-            segment_range_merge2(&(si->args->bad_ranges), b->seg_offset, b->seg_end);
+            tbx_range_stack_merge2(&(si->args->bad_ranges), b->seg_offset, b->seg_end);
 
             nrepaired = nlost - err;
         }
@@ -2191,7 +2192,7 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
                 } while ((err > 0) && (j<5));
 
                 //** Add the range as repaired
-                segment_range_merge2(&(si->args->bad_ranges), b->seg_offset, b->seg_end);
+                tbx_range_stack_merge2(&(si->args->bad_ranges), b->seg_offset, b->seg_end);
 
                 nmigrated += nforce - err;
             }

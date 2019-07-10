@@ -23,9 +23,6 @@ gop_op_generic_t *segment_put_gop(gop_thread_pool_context_t *tpc, data_attr_t *d
 gop_op_generic_t *segment_get_gop(gop_thread_pool_context_t *tpc, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, lio_segment_t *src_seg, FILE *fd, ex_off_t src_offset, ex_off_t len, ex_off_t bufsize, char *buffer, int timeout);
 lio_segment_t *load_segment(lio_service_manager_t *ess, ex_id_t id, lio_exnode_exchange_t *ex);
 
-void segment_range_merge(tbx_stack_t **range_stack_ptr, ex_off_t *new_rng);
-void segment_range_merge2(tbx_stack_t **range_stack_ptr, ex_off_t lo, ex_off_t hi);
-
 // Preprocessor macros
 #define lio_segment_type(s) (s)->header.type
 #define segment_block_size(s) ((lio_segment_vtable_t *)(s)->obj.vtable)->block_size(s)

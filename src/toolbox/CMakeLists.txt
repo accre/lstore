@@ -42,6 +42,7 @@ set(TOOL_OBJS
     pipe_helper.c
     que.c
     random.c
+    range_stack.c
     siginfo.c
     skiplist.c
     stack.c
@@ -75,6 +76,7 @@ set(LSTORE_PROJECT_INCLUDES
     tbx/pipe_helper.h
     tbx/que.h
     tbx/random.h
+    tbx/range_stack.h
     tbx/skiplist.h
     tbx/siginfo.h
     tbx/stack.h

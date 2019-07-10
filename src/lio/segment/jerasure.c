@@ -49,6 +49,7 @@
 #include <tbx/iniparse.h>
 #include <tbx/interval_skiplist.h>
 #include <tbx/log.h>
+#include <tbx/range_stack.h>
 #include <tbx/string_token.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
@@ -932,7 +933,7 @@ void _segjerase_remap_add_ranges(segjerase_priv_t *s, tbx_stack_t *ranges, tbx_s
         rng[0] = rng[0] / s->stripe_size_with_magic; rng[0] = rng[0] * s->data_size;
         rng[1] = rng[1] / s->stripe_size_with_magic; rng[1] = (rng[1]+1) * s->data_size - 1;
         log_printf(1, "Adding range: " XOT " - " XOT "\n", rng[0], rng[1]);
-        segment_range_merge(&ranges, rng);
+        tbx_range_stack_merge(&ranges, rng);
     }
     return;
 }
