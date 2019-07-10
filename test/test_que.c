@@ -182,7 +182,7 @@ int process_results(task_t *task, int ntasks, producer_t *producer, int np, cons
         } else if (task[i].times_consumed != 1) {
             fprintf(stdout, "ERROR: DOUBLE counted task=%d times_consumed=%d\n", i, task[i].times_consumed);
             double_cnt++;
-            err = 1;        
+            err = 1;
         } else {
             task[i].dt = task[i].end - task[i].start;
             ttime += task[i].dt;
@@ -258,7 +258,6 @@ int process_results(task_t *task, int ntasks, producer_t *producer, int np, cons
 }
 
 //************************************************************************************
-
 
 int main(int argc, char **argv)
 {
