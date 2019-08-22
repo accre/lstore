@@ -133,7 +133,7 @@ gop_op_status_t lio_write_ex_fn_aio(void *arg, int id)
     double dt;
     ex_off_t t1, t2;
 
-    if ((fd->mode & LIO_WRITE_MODE) == 0) return(gop_failure_status);
+    if ((fd->mode & LIO_WRITE_MODE) == 0) { _op_set_status(status, OP_STATE_FAILURE, -EINVAL); return(gop_failure_status); }
     if (op->n_iov <=0) return(gop_success_status);
 
     t1 = iov[0].len;

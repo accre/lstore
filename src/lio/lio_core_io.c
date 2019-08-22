@@ -450,27 +450,31 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
                 log_printf(1, "ERROR creating file(%s)!\n", op->path);
                 free(op->path);
                 *op->fd = NULL;
-                return(gop_failure_status);
+                _op_set_status(status, OP_STATE_FAILURE, -EIO);
+                return(status);
             }
         } else if ((dtype & OS_OBJECT_DIR_FLAG) > 0) { //** It's a dir so fail
             info_printf(lio_ifd, 1, "Destination(%s) is a dir!\n", op->path);
             log_printf(1, "ERROR: Destination(%s) is a dir!\n", op->path);
             free(op->path);
             *op->fd = NULL;
-            return(gop_failure_status);
+            _op_set_status(status, OP_STATE_FAILURE, -EISDIR);
+            return(status);
         } else if (op->mode & LIO_EXCL_MODE) { //** This file shouldn't exist with this flag so kick out
             info_printf(lio_ifd, 1, "ERROR file(%s) already exists and EXCL is set!\n", op->path);
             log_printf(1, "ERROR file(%s) already exists and EXCL is set!\n", op->path);
             free(op->path);
             *op->fd = NULL;
-            return(gop_failure_status);
+            _op_set_status(status, OP_STATE_FAILURE, -EEXIST);
+            return(status);
         }
     } else if (dtype == 0) { //** No file so return an error
         info_printf(lio_ifd, 20, "Destination(%s) doesn't exist!\n", op->path);
         log_printf(1, "ERROR: Destination(%s) doesn't exist!\n", op->path);
         free(op->path);
         *op->fd = NULL;
-        return(gop_failure_status);
+        _op_set_status(status, OP_STATE_FAILURE, -ENOTDIR);
+        return(status);
     }
 
     //** Make the space for the FD
@@ -488,7 +492,8 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
         free(fd);
         *op->fd = NULL;
         free(op->path);
-        return(gop_failure_status);
+        _op_set_status(status, OP_STATE_FAILURE, -EIO);
+        return(status);
     }
 
     //** Load the exnode and get the default view ID
@@ -500,7 +505,8 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
         *op->fd = NULL;
         free(op->path);
         lio_exnode_exchange_destroy(exp);
-        return(gop_failure_status);
+        _op_set_status(status, OP_STATE_FAILURE, -EIO);
+        return(status);
     }
 
     lio_lock(lc);
@@ -527,8 +533,7 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
     fh->ex = lio_exnode_create();
     if (lio_exnode_deserialize(fh->ex, exp, lc->ess) != 0) {
         log_printf(0, "ERROR: Bad exnode! fname=%s\n", fd->path);
-        status.op_status = OP_STATE_FAILURE;
-        status.error_code = -EFAULT;
+        _op_set_status(status, OP_STATE_FAILURE, -EIO);
         goto cleanup;
     }
 
@@ -536,8 +541,7 @@ gop_op_status_t lio_myopen_fn(void *arg, int id)
     fh->seg = lio_exnode_default_get(fh->ex);
     if (fh->seg == NULL) {
         log_printf(0, "ERROR: No default segment!  Aborting! fname=%s\n", fd->path);
-        status.op_status = OP_STATE_FAILURE;
-        status.error_code = -EFAULT;
+        _op_set_status(status, OP_STATE_FAILURE, -EIO);
         goto cleanup;
     }
 
@@ -667,6 +671,7 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
         n = lio_encode_error_counts(&serr, key, val, ebuf, v_size, 0);
         if ((serr.hard>0) || (serr.soft>0) || (serr.write>0)) {
             log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fd->path, serr.hard, serr.soft, serr.write);
+            _op_set_status(status, OP_STATE_FAILURE, -EIO);
         }
         if (n > 0) {
             err = lio_multiple_setattr_op(lc, fd->creds, fd->path, NULL, key, (void **)val, v_size, n);
