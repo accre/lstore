@@ -63,6 +63,7 @@ struct lio_amp_stream_table_t {
 struct lio_cache_amp_t {
     char *section;
     tbx_stack_t *stack;
+    tbx_stack_t *free_pages;
     tbx_stack_t *waiting_stack;
     tbx_stack_t *pending_free_tasks;
     tbx_pc_t *free_pending_tables;
