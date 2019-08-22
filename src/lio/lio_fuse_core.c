@@ -785,6 +785,42 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
     return(0);
 }
 
+
+//*****************************************************************
+// lfs_copy_file_range - Copies data between files
+//*****************************************************************
+
+ssize_t lfs_copy_file_range(const char *path_in,  struct fuse_file_info *fi_in,  off_t offset_in,
+                            const char *path_out, struct fuse_file_info *fi_out, off_t offset_out, size_t size, int flags)
+{
+    lio_fuse_t *lfs = lfs_get_context();
+    int err;
+    lio_fd_t *fd_in, *fd_out;
+
+    log_printf(1, "START copy_file_range src=%s dest=%s\n", path_in, path_out);
+
+    fd_in = (lio_fd_t *)fi_in->fh;
+    if (fd_in == NULL) {
+        log_printf(0, "ERROR: Got a null LFS fd_in handle\n");
+        return(-EBADF);
+    }
+
+    fd_out = (lio_fd_t *)fi_out->fh;
+    if (fd_out == NULL) {
+        log_printf(0, "ERROR: Got a null LFS fd_out handle\n");
+        return(-EBADF);
+    }
+
+    //** Do the copy op
+    err = gop_sync_exec(lio_cp_lio2lio_gop(fd_in, fd_out, 0, NULL, offset_in, offset_out, size, 0, lfs->rw_hints));
+    if (err != OP_STATE_SUCCESS) {
+        return(-EIO);
+    }
+
+    return(size);
+
+}
+
 //*****************************************************************
 // lfs_fsync - Flushes any data to backing store
 //*****************************************************************
@@ -1628,6 +1664,7 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
     .getattr = lfs_stat,
     .utimens = lfs_utimens,
     .rename = lfs_rename,
+    .copy_file_range = lfs_copy_file_range,
 #else
     .truncate = lfs_truncate,
     .ftruncate = lfs_ftruncate,
