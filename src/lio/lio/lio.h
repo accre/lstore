@@ -123,6 +123,7 @@ LIO_API lio_path_tuple_t lio_path_resolve_base(char *lpath);
 LIO_API int lio_path_wildcard_auto_append(lio_path_tuple_t *tuple);
 LIO_API void lio_print_options(FILE *fd);
 LIO_API void lio_print_path_options(FILE *fd);
+LIO_API void lio_print_object_type_options(FILE *fd, int obj_type_default);
 LIO_API gop_op_generic_t *lio_regex_object_set_multiple_attrs_gop(lio_config_t *lc, lio_creds_t *creds, char *id, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int object_types, int recurse_depth, char **key, void **val, int *v_size, int n);
 LIO_API gop_op_generic_t *lio_remove_gop(lio_config_t *lc, lio_creds_t *creds, char *path, char *ex_optional, int ftype_optional);
 LIO_API gop_op_generic_t *lio_remove_regex_gop(lio_config_t *lc, lio_creds_t *creds, lio_os_regex_table_t *path, lio_os_regex_table_t *object_regex, int obj_types, int recurse_depth, int np);

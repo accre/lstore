@@ -1279,6 +1279,18 @@ void lio_print_path_options(FILE *fd)
 }
 
 //***************************************************************
+// lio_print_object_type_options - Prints the object type options to the device
+//***************************************************************
+
+void lio_print_object_type_options(FILE *fd, int obj_type_default)
+{
+    fprintf(fd, "    -t  object_types   - Types of objects to list or traverse. Bitwise OR of:\n");
+    fprintf(fd, "                             1=Files, 2=Directories, 4=symlink, 8=hardlink.\n");
+    fprintf(fd, "                             16=broken link, 32=virtual attribute, 64=Follow symlinks\n");
+    fprintf(fd, "                             Default is %d.\n", obj_type_default);
+}
+
+//***************************************************************
 // lio_parse_path_options - Parses the path options
 //***************************************************************
 

@@ -1579,11 +1579,10 @@ log_printf(0, "regexec=%d entry=%s\n", i, itl->entry);
                         } else { //** Off the static table or on the last level.  From here on all hits are matches. Just have to check ftype
                             i = os_local_filetype_stat(fullname, &link_stat, &object_stat);
                             log_printf(15, " ftype=%d object_types=%d firstpass=%d\n", i, it->object_types, itl->firstpass);
-
                             do_recurse = 1;
                             if (i & OS_OBJECT_SYMLINK_FLAG) {  //** Check if we follow symlinks
                                 if ((it->object_types & OS_OBJECT_FOLLOW_SYMLINK_FLAG) == 0) {
-                                    if ((it->table->n-1) < it->curr_level) do_recurse = 0;  //** Off the static level and hit a symlink so ignore it.
+                                    if ((it->table->n-1) <= it->curr_level) do_recurse = 0;  //** Off the static level and hit a symlink so ignore it.
                                 } else {  //** Check if we have a symlink loop
                                     if (apr_hash_get(it->symlink_loop, &link_stat.st_ino, sizeof(ino_t)) != NULL) {
                                         log_printf(15, "Already been here via symlink so pruning\n");
@@ -1596,7 +1595,8 @@ log_printf(0, "regexec=%d entry=%s\n", i, itl->entry);
                                 }
                             }
 
-                            if (i & OS_OBJECT_FILE_FLAG) {
+                            //** See if we have a match: either it's a file or a symlink to a file or dir we don't recurse into
+                            if ((i & OS_OBJECT_FILE_FLAG) || ((i & OS_OBJECT_DIR_FLAG) && (do_recurse == 0))) {
                                 if ((i & it->object_types) > 0) {
                                     rmatch = (it->object_regex == NULL) ? 0 : ((obj_fixed != NULL) ? strcmp(itl->entry, obj_fixed) : regexec(it->object_preg, itl->entry, 0, NULL, 0));
 

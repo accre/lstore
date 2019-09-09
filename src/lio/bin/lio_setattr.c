@@ -106,7 +106,7 @@ int main(int argc, char **argv)
         lio_print_path_options(stdout);
         printf("\n");
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-        printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
+        lio_print_object_type_options(stdout, obj_types);
         printf("    -delim c           - Key/value delimeter characters.  Defauls is %s.\n", delims);
         printf("    -as key=value      - Breaks up the literal string into the key/value pair and stores it.\n");
         printf("    -ar key            - Remove the key.\n");
