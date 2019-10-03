@@ -309,7 +309,7 @@ if(BUILD_TESTS)
                              test/runner.c
                              test/runner-unix.c
                              test/benchmark-sizes.c)
-    target_link_libraries(run-benchmarks pthread lio)
+    target_link_libraries(run-benchmarks pthread lio dl)
     target_include_directories(run-benchmarks PRIVATE ${APR_INCLUDE_DIR})
     SET_TARGET_PROPERTIES(run-benchmarks PROPERTIES
                             COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")

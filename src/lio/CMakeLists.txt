@@ -60,6 +60,7 @@ set(LSTORE_LIBS toolbox
                 ${FUSE_LIBRARY}
                 ${JERASURE_LIBRARY}
                 ${LEVELDB_LIBRARY}
+                dl
                 )
 set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${APRUTIL_INCLUDE_DIR}
