@@ -1453,7 +1453,7 @@ int amp_cache_destroy(lio_cache_t *c)
     tbx_log_flush();
 
     //** Remove ourselves from the info handler
-    tbx_siginfo_handler_remove(amp_cache_info_fn, c);
+    tbx_siginfo_handler_remove(SIGUSR1, amp_cache_info_fn, c);
 
     //** Shutdown the dirty thread
     cache_lock(c);
@@ -1558,7 +1558,7 @@ lio_cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
     cache->fn.print_running_config = amp_print_running_config;
 
     //** Add ourselves to the info handler
-    tbx_siginfo_handler_add(amp_cache_info_fn, cache);
+    tbx_siginfo_handler_add(SIGUSR1, amp_cache_info_fn, cache);
 
     apr_thread_cond_create(&(c->dirty_trigger), cache->mpool);
     tbx_thread_create_assert(&(c->dirty_thread), NULL, amp_dirty_thread, (void *)cache, cache->mpool);

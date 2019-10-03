@@ -16,6 +16,8 @@
 
 #define _log_module_index 193
 
+//#define _GNU_SOURCE  //**Already set
+#include <dlfcn.h>
 #include <apr.h>
 #include <apr_dso.h>
 #include <apr_errno.h>
@@ -28,6 +30,7 @@
 #include <gop/mq_ongoing.h>
 #include <gop/mq.h>
 #include <gop/tp.h>
+#include <malloc.h>
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -110,8 +113,51 @@ tbx_list_t *_lc_object_list = NULL;
 lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, char *obj_name, char *exe_name);
 void lio_destroy_nl(lio_config_t *lio);
 
+//** These are for releasing memory
+typedef void *(tcfree_t)();
+tcfree_t *_tcfree = NULL;
+
 char **myargv = NULL;  // ** This is used to hold the new argv we return from lio_init so we can properly clean it up
 
+//***************************************************************
+//  memory_usage_dump - Dumps the memory usage to the FD
+//***************************************************************
+
+void memory_usage_dump(FILE *fd)
+{
+    int stderr_old;
+    fpos_t stderr_pos, fd_pos;
+
+    fprintf(fd, "-----------Memory usage-------------\n");
+    fflush(stderr);  fflush(fd);
+    fgetpos(stderr, &stderr_pos);
+    stderr_old = dup(fileno(stderr));
+    fgetpos(fd, &fd_pos);
+    dup2(fileno(fd), fileno(stderr));
+    fsetpos(stderr, &fd_pos);
+    malloc_stats();
+    dup2(stderr_old, fileno(stderr));
+    close(stderr_old);
+    fsetpos(stderr, &stderr_pos);
+    fprintf(fd, "\n");
+}
+
+//***************************************************************
+// memory_release_fn - Releases all the memory bask to the Kernel
+//***************************************************************
+
+void memory_release_fn(void *arg, FILE *fd)
+{
+    if (_tcfree) {
+        fprintf(fd, "---------------------------------- Initial usage --------------------------------------------\n");
+        memory_usage_dump(fd);
+        _tcfree();
+        fprintf(fd, "---------------------------------- After release --------------------------------------------\n");
+        memory_usage_dump(fd);
+    } else {
+        fprintf(fd, "tcmalloc not used. Option not available\n");
+    }
+}
 
 //***************************************************************
 // lio_print_running_config - Prints the running config
@@ -147,6 +193,8 @@ void lio_print_running_config(FILE *fd, lio_config_t *lio)
     os_print_running_config(lio->os, fd, 1);
     ds_print_running_config(lio->ds, fd, 1);
     rs_print_running_config(lio->rs, fd, 1);
+
+    memory_usage_dump(fd);
 }
 
 //***************************************************************
@@ -946,8 +994,8 @@ void lio_destroy_nl(lio_config_t *lio)
     tbx_list_destroy(lio->open_index);
 
     //** Remove ourselves to the info handler
-    tbx_siginfo_handler_remove(lio_open_files_info_fn, lio);
-    tbx_siginfo_handler_remove(lio_dump_running_config_fn, lio);
+    tbx_siginfo_handler_remove(SIGUSR1, lio_open_files_info_fn, lio);
+    tbx_siginfo_handler_remove(SIGUSR1, lio_dump_running_config_fn, lio);
 
     //** Blacklist if used
     if (lio->blacklist != NULL) {
@@ -1239,8 +1287,8 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     apr_thread_mutex_create(&(lio->lock), APR_THREAD_MUTEX_DEFAULT, lio->mpool);
 
     //** Add ourselves to the info handler
-    tbx_siginfo_handler_add(lio_open_files_info_fn, lio);
-    tbx_siginfo_handler_add(lio_dump_running_config_fn, lio);
+    tbx_siginfo_handler_add(SIGUSR1, lio_open_files_info_fn, lio);
+    tbx_siginfo_handler_add(SIGUSR1, lio_dump_running_config_fn, lio);
 
     log_printf(1, "END: uri=%s\n", obj_name);
 
@@ -1691,6 +1739,11 @@ no_args:
     //** Install the signal handler hook to get info
     dummy = tbx_inip_get_string(lio_gc->ifd, section_name, "info_fname", "/tmp/lio_info.txt");
     tbx_siginfo_install(dummy, SIGUSR1);
+
+    //** Install the handler to release memory
+    tbx_siginfo_install(NULL, SIGUSR2);
+    tbx_siginfo_handler_add(SIGUSR2, memory_release_fn, NULL);
+    _tcfree = (tcfree_t *)dlsym(RTLD_DEFAULT, "MallocExtension_ReleaseFreeMemory");
 
     log_printf(1, "INIT completed\n");
 

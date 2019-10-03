@@ -295,7 +295,7 @@ gop_thread_pool_context_t *gop_tp_context_create(char *tp_name, int min_threads,
         tpc->reserve_stack[i] = tbx_stack_new();
     }
 
-    tbx_siginfo_handler_add(tp_siginfo_handler, tpc);
+    tbx_siginfo_handler_add(SIGUSR1, tp_siginfo_handler, tpc);
 
     return(tpc);
 }
@@ -312,7 +312,7 @@ void gop_tp_context_destroy(gop_thread_pool_context_t *tpc)
 
     log_printf(15, "tpc->name=%s  high=%zu idle=%zu\n", tpc->name, tbx_thread_pool_threads_high_count(tpc->tp),  tbx_thread_pool_threads_idle_timeout_count(tpc->tp));
 
-    tbx_siginfo_handler_remove(tp_siginfo_handler, tpc);
+    tbx_siginfo_handler_remove(SIGUSR1, tp_siginfo_handler, tpc);
     gop_hp_context_destroy(tpc->pc);
 
     tbx_thread_pool_destroy(tpc->tp);

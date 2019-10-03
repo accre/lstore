@@ -2299,7 +2299,7 @@ void ostc_destroy(lio_object_service_fn_t *os)
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     apr_status_t value;
 
-    tbx_siginfo_handler_remove(ostc_info_fn, os);
+    tbx_siginfo_handler_remove(SIGUSR1, ostc_info_fn, os);
 
     //** Shut the child down
     if (ostc->os_child != NULL) {
@@ -2420,7 +2420,7 @@ lio_object_service_fn_t *object_service_timecache_create(lio_service_manager_t *
     os->next_fsck = ostc_next_fsck;
     os->fsck_object = ostc_fsck_object;
 
-    tbx_siginfo_handler_add(ostc_info_fn, os);
+    tbx_siginfo_handler_add(SIGUSR1, ostc_info_fn, os);
     tbx_thread_create_assert(&(ostc->cleanup_thread), NULL, ostc_cache_compact_thread, (void *)os, ostc->mpool);
 
     log_printf(10, "END\n");

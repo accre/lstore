@@ -1694,7 +1694,7 @@ gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *imp, char *name)
 
     tbx_thread_create_warn(err, &(hpc->main_thread), NULL, hportal_thread, (void *)hpc, hpc->pool);
 
-    tbx_siginfo_handler_add(hportal_siginfo_handler, hpc);
+    tbx_siginfo_handler_add(SIGUSR1, hportal_siginfo_handler, hpc);
 
     return(hpc);
 }
@@ -1735,7 +1735,7 @@ void gop_hp_context_destroy(gop_portal_context_t *hpc)
 
     if (!hpc->pool) goto submit_only;
 
-    tbx_siginfo_handler_remove(hportal_siginfo_handler, hpc);
+    tbx_siginfo_handler_remove(SIGUSR1, hportal_siginfo_handler, hpc);
 
     //** Shutdown all the connections and the main thread
     cmd.cmd = HPC_CMD_SHUTDOWN;

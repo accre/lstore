@@ -3230,7 +3230,7 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
     osrs->active_lru = tbx_stack_new();
 
     _os_global = os;
-    tbx_siginfo_handler_add(osrs_siginfo_fn, os);
+    tbx_siginfo_handler_add(SIGUSR1, osrs_siginfo_fn, os);
 
     //** Activate it
     gop_mq_portal_install(osrs->mqc, osrs->server_portal);

@@ -32,14 +32,13 @@
 #include "tbx/apr_wrapper.h"
 #include "tbx/type_malloc.h"
 
+#define MAX_SIG 65
+char *_siginfo_name[MAX_SIG];
+tbx_stack_t *_si_list[MAX_SIG];
 
-char *_siginfo_name = NULL;
-tbx_stack_t *_si_list = NULL;
 apr_thread_mutex_t *_si_lock = NULL;
 apr_pool_t *_si_pool = NULL;
 apr_thread_t *_si_thread = NULL;
-
-int _signal = -1234;
 
 typedef struct {  // ** info handler task
     tbx_siginfo_fn_t fn;
@@ -50,7 +49,7 @@ typedef struct {  // ** info handler task
 // tbx_siginfo_handler_add - Adds a routine to run when info is requested
 // ***************************************************************
 
-void tbx_siginfo_handler_add(tbx_siginfo_fn_t fn, void *arg)
+void tbx_siginfo_handler_add(int signal, tbx_siginfo_fn_t fn, void *arg)
 {
     si_task_t *t;
 
@@ -59,7 +58,7 @@ void tbx_siginfo_handler_add(tbx_siginfo_fn_t fn, void *arg)
     tbx_type_malloc_clear(t, si_task_t, 1);
     t->fn = fn;
     t->arg = arg;
-    tbx_stack_push(_si_list, t);
+    tbx_stack_push(_si_list[signal], t);
     apr_thread_mutex_unlock(_si_lock);
 }
 
@@ -67,21 +66,21 @@ void tbx_siginfo_handler_add(tbx_siginfo_fn_t fn, void *arg)
 // tbx_siginfo_handler_remove - Removes a routine to run when info is requested
 // ***************************************************************
 
-void tbx_siginfo_handler_remove(tbx_siginfo_fn_t fn, void *arg)
+void tbx_siginfo_handler_remove(int signal, tbx_siginfo_fn_t fn, void *arg)
 {
     si_task_t *t;
 
     if (_si_list == NULL) return;
 
     apr_thread_mutex_lock(_si_lock);
-    tbx_stack_move_to_top(_si_list);
-    while ((t = tbx_stack_get_current_data(_si_list)) != NULL) {
+    tbx_stack_move_to_top(_si_list[signal]);
+    while ((t = tbx_stack_get_current_data(_si_list[signal])) != NULL) {
         if ((t->fn == fn) && (t->arg == arg)) {
-            tbx_stack_delete_current(_si_list, 0, 1);
+            tbx_stack_delete_current(_si_list[signal], 0, 1);
             break;
         }
 
-        tbx_stack_move_down(_si_list);
+        tbx_stack_move_down(_si_list[signal]);
     }
     apr_thread_mutex_unlock(_si_lock);
 
@@ -98,21 +97,27 @@ void *siginfo_thread(apr_thread_t *th, void *data)
 {
     FILE *fd;
     si_task_t *t;
+    char sname[100];
     apr_status_t ret = 0;
+    long signal = (long)data;
+
+    if ((signal < 1) || (signal > MAX_SIG)) return(NULL);
+
+    snprintf(sname, sizeof(sname), "/tmp/siginfo-%ld.log", signal);
 
     apr_thread_detach(th);  //** Detach us
 
     apr_thread_mutex_lock(_si_lock);
-    fd = fopen((_siginfo_name) ? _siginfo_name : "/tmp/siginfo.log", "w");
+    fd = fopen((_siginfo_name[signal]) ? _siginfo_name[signal] : sname, "w");
     if (fd == NULL) {
-        log_printf(0, "Unable to dump info to %s\n", _siginfo_name);
+        log_printf(0, "Unable to dump info to %s for signal %ld\n", _siginfo_name[signal], signal);
         goto failed;
     }
 
-    tbx_stack_move_to_top(_si_list);
-    while ((t = tbx_stack_get_current_data(_si_list)) != NULL) {
+    tbx_stack_move_to_top(_si_list[signal]);
+    while ((t = tbx_stack_get_current_data(_si_list[signal])) != NULL) {
         t->fn(t->arg, fd);
-        tbx_stack_move_down(_si_list);
+        tbx_stack_move_down(_si_list[signal]);
     }
     fclose(fd);
 
@@ -130,8 +135,9 @@ failed:
 
 void tbx_siginfo_handler(int sig)
 {
+    long signal = sig;
     apr_thread_mutex_lock(_si_lock);
-    tbx_thread_create_assert(&_si_thread, NULL, siginfo_thread, NULL, _si_pool);
+    tbx_thread_create_assert(&_si_thread, NULL, siginfo_thread, (void *)signal, _si_pool);
     apr_thread_mutex_unlock(_si_lock);
 }
 
@@ -145,18 +151,19 @@ void tbx_siginfo_install(char *fname, int signal)
     if (!_si_pool) {
         apr_pool_create(&_si_pool, NULL);
         apr_thread_mutex_create(&_si_lock, APR_THREAD_MUTEX_DEFAULT, _si_pool);
-        _si_list = tbx_stack_new();
     }
+
+    if ((signal < 1) || (signal > MAX_SIG)) return;
 
     apr_thread_mutex_lock(_si_lock);
 
-    if (_siginfo_name) free(_siginfo_name);
-    _siginfo_name = fname;
+    if (!_si_list[signal])  _si_list[signal] = tbx_stack_new();
 
-    if (_signal != -1234) apr_signal_block(_signal);
-    _signal = signal;
-    apr_signal_unblock(_signal);
-    apr_signal(_signal, tbx_siginfo_handler);
+    if (_siginfo_name[signal]) free(_siginfo_name[signal]);
+    _siginfo_name[signal] = fname;
+
+    apr_signal_unblock(signal);
+    apr_signal(signal, tbx_siginfo_handler);
     apr_thread_mutex_unlock(_si_lock);
 }
 
@@ -168,10 +175,14 @@ void tbx_siginfo_install(char *fname, int signal)
 
 void tbx_siginfo_shutdown()
 {
+    int i;
     if (!_si_pool) return;
 
-    if (_signal != -1234) apr_signal_block(_signal);
-    if (_siginfo_name) free(_siginfo_name);
+    for (i=1; i<MAX_SIG; i++) {
+        if (_si_list[i] != NULL) apr_signal_block(i);
+        if(_siginfo_name[i] != NULL) free(_siginfo_name[i]);
+    }
+
     apr_pool_destroy(_si_pool);
 }
 
