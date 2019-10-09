@@ -3,6 +3,8 @@
 WARMER_LOG="/lio/log/warmer_run.log"
 WARMER_LAST_EMAIL="/lio/log/warmer_last_email.log"
 WARMER_SUMMARY_EXEC="/usr/local/bin/warmer_summary.sh"
+NAME=${HOSTNAME}
+[ "${DOCKER_NAME}" != "" ] && NAME="${DOCKER_NAME} on ${HOSTNAME}"
 
 # Check if it's a different day since the last email
 if [ -e ${WARMER_LAST_EMAIL} ]; then
@@ -30,7 +32,7 @@ LINES=$((LINES-1))
 FROM_ADDR="storage-nagios@accre.vanderbilt.edu"
 TO_ADDR="reddnet-alerts@lists.accre.vanderbilt.edu"
 
-SUBJECT=$(cat ${REPORT} | head -n 1)
+SUBJECT="[${NAME}] $(cat ${REPORT} | head -n 1)"
 
 BODY=$(mktemp)
 cat ${REPORT} | tail -n ${LINES} > ${BODY}

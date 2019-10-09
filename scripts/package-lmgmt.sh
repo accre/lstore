@@ -12,7 +12,7 @@ ${LSTORE_SCRIPT_BASE}/build-python3-venv.sh
 source ${LSTORE_VENV}/bin/activate
 
 cd ${LSTORE_RELEASE_BASE}/lserver/lmgmt
-python setup.py sdist
+python3 setup.py sdist
 ERR=$?
 deactivate
 exit ${ERR}

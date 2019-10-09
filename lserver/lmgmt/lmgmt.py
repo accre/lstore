@@ -19,7 +19,6 @@
     db=/lio/log/warm.2
 """
 
-import psutil
 import re
 import operator
 import sys
@@ -49,6 +48,39 @@ WQ_GOOD  = 1   # Only return files that have no missing allocations
 WQ_BAD   = 2   # Only return files that have missing allocations
 WQ_WRITE = 4   # Just return files with write errors
 WQ_ALL   = 3   # Return everything
+
+#***********************************************************************************
+
+def convert_string2float(vstr):
+    """
+    Converts the string with optional units to bytes
+    """
+
+    match = re.search(r"(\d*\.\d+|\d+)(.*)", vstr)
+
+    val = float(match.group(1))
+    if (match.group(2) == None):
+        return(val)
+
+    base = 1000
+    units = match.group(2).lower()
+
+    if (len(units) == 2):
+        if (match.group(2)[1] == "i"):
+            base = 1024
+
+    if (units[0] == "b"):
+        val = val * 1
+    elif (units[0] == "k"):
+        val = val * base
+    elif (units[0] == "m"):
+        val = val * base * base
+    elif (units[0] == "g"):
+        val = val * base * base * base
+    elif (units[0] == "t"):
+        val = val * base * base * base * base
+
+    return(val)
 
 #***********************************************************************************
 
@@ -95,14 +127,9 @@ def warmer_running():
     :returns: True if a warmer is running and False otherwise
     """
 
-    for p in psutil.process_iter():
-        try:
-            pinfo = p.as_dict(attrs=['pid', 'name'])
-        except psutil.NoSuchProcess:
-            pass
-        else:
-            if 'lio_warm' in pinfo['name']:
-                return(True)
+    p = subprocess.run(["pgrep", "lio_warm"], stdout=subprocess.DEVNULL)
+    if p.returncode == 0:
+     	return(True)
 
     return(False)
 
@@ -298,7 +325,7 @@ def warmer_query(rid, mode, total_bytes):
 
     #Add the size if needed
     if (total_bytes > 0):
-        task.extend(["-b", total_bytes])
+        task.extend(["-b", str(total_bytes)])
 
     #Launch the process
     p = subprocess.Popen(task, stdout=subprocess.PIPE)
@@ -359,11 +386,12 @@ def rid_rebalance_table():
         p = subprocess.Popen(task, stdout=subprocess.PIPE)
         rid = []
         for line in p.stdout:
+            line = line.decode("utf-8")
             if "STATE: 0" in line:
                 #print "1:line=", line
                 info = regex.search(line)
                 if info != None:
-                    rid.append([info.group(1), info.group(2)]);
+                    rid.append([info.group(1), convert_string2float(info.group(2))]);
 
     return(rid)
 

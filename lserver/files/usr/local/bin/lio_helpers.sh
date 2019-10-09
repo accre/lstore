@@ -1,9 +1,11 @@
 find_lib() {
     #Check the LD_LIBRARY_PATH first
-    LP=$(find $(echo $LD_LIBRARY_PATH | tr -s ":" " ") | grep $1 | sort | head -n 1)
-    if [ "${LP}" != "" ]; then
-        echo ${LP}
-        return
+    if [ "$LD_LIBRARY_PATH" != "" ]; then
+        LP=$(find $(echo $LD_LIBRARY_PATH | tr -s ":" " ") | grep $1 | sort | head -n 1)
+        if [ "${LP}" != "" ]; then
+            echo ${LP}
+            return
+         fi
     fi
 
     # Check if it's in the default paths

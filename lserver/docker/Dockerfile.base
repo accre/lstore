@@ -17,7 +17,7 @@ ENV OSFILE=0
 
 #Setup up the LStore packages
 RUN echo '\n\
-deb file:///repo/  packages/ \n\
+deb [trusted=yes] file:///repo/  packages/ \n\
 ' >>  /etc/apt/sources.list.d/lstore.list
 RUN head /etc/apt/sources.list.d/lstore.list
 COPY repo /repo
@@ -25,7 +25,6 @@ COPY repo /repo
 # And install them
 RUN apt-get update && apt-get install -y --allow-unauthenticated --no-install-recommends \
   lstore \
-  lstore-dbgsym \
   libapr1 \
   libaprutil1 \
   libfuse-dev \
@@ -39,6 +38,10 @@ COPY tarballs /tarballs
 RUN GLOBIGNORE=/tarballs/*.site.tgz && cat /tarballs/*.tgz | tar -zxvf - -i
 #Then add the site versions which can override the default
 RUN cat /tarballs/*.site.tgz | tar -zxvf - -i
+
+#Copy the lmgmt python3 module to it's location referenced in bashrc.
+#This is sloppy because the Docker python3 doesn't ship with PIP
+COPY /tarballs/lmgmt.py /python3-extras/
 
 #Also copy any samples
 COPY samples /samples

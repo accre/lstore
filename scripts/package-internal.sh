@@ -8,6 +8,10 @@
 # Preliminary bootstrapping
 #
 
+echo "====================Manually installing libleveldb-dev================================="
+apt-get install -y libleveldb-dev
+echo "======================================================================================="
+
 set -eux
 ABSOLUTE_PATH=$(cd `dirname "${BASH_SOURCE[0]}"` && pwd)
 source $ABSOLUTE_PATH/functions.sh

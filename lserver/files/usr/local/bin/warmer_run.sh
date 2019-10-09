@@ -38,8 +38,8 @@ LOCKFILE=/var/lock/warmer_run.lock
     (
         eval $(get_ld_preload_tcmalloc)
         TCMALLOC_RELEASE_RATE=5 lio_warm -i 1 -t /etc/lio/tag.cfg -c /etc/lio/warmer.cfg -db ${DB} -sf -dt 2590000 -np 300 '@:/*'
-        status=$?
     )
+    status=$?
     echo
     echo "===================== END ==========================="
     date
