@@ -1610,9 +1610,9 @@ ex_off_t lio_size(lio_fd_t *fd)
 // lio_block_size - Return the block size for R/W
 //***********************************************************************
 
-ex_off_t lio_block_size(lio_fd_t *fd)
+ex_off_t lio_block_size(lio_fd_t *fd, int block_type)
 {
-    return(segment_block_size(fd->fh->seg));
+    return(segment_block_size(fd->fh->seg, block_type));
 }
 
 //***********************************************************************

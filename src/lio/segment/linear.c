@@ -1030,7 +1030,7 @@ ex_off_t seglin_size(lio_segment_t *seg)
 // seglin_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t seglin_block_size(lio_segment_t *seg)
+ex_off_t seglin_block_size(lio_segment_t *seg, int btype)
 {
     return(1);
 }

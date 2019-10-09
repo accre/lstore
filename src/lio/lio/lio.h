@@ -70,7 +70,7 @@ LIO_API void lio_get_timestamp(char *val, int *timestamp, char **id);
 LIO_API ex_off_t lio_seek(lio_fd_t *fd, ex_off_t offset, int whence);
 LIO_API ex_off_t lio_tell(lio_fd_t *fd);
 LIO_API ex_off_t lio_size(lio_fd_t *fd);
-LIO_API ex_off_t lio_block_size(lio_fd_t *fd);
+LIO_API ex_off_t lio_block_size(lio_fd_t *fd, int block_type);
 LIO_API int lio_cache_pages_drop(lio_fd_t *fd, ex_off_t lo, ex_off_t hi);
 LIO_API gop_op_generic_t *lio_truncate_gop(lio_fd_t *fd, ex_off_t new_size);
 LIO_API gop_op_generic_t *lio_flush_gop(lio_fd_t *fd, ex_off_t lo, ex_off_t hi);

@@ -3180,8 +3180,12 @@ ex_off_t segcache_size(lio_segment_t *seg)
 // seglin_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t segcache_block_size(lio_segment_t *seg)
+ex_off_t segcache_block_size(lio_segment_t *seg, int btype)
 {
+    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+
+    if (btype == LIO_SEGMENT_BLOCK_NATURAL) return(segment_block_size(s->child_seg, btype));
+
     return(1);
 }
 
@@ -3328,7 +3332,7 @@ int segcache_deserialize_text(lio_segment_t *seg, ex_id_t myid, lio_exnode_excha
     seg->header.name = tbx_inip_get_string(fd, seggrp, "name", "");
 
     //** Tweak the page size
-    s->page_size = segment_block_size(s->child_seg);
+    s->page_size = segment_block_size(s->child_seg, LIO_SEGMENT_BLOCK_NATURAL);
     if (s->c != NULL) {
         if (s->page_size < s->c->default_page_size) {
             n = s->c->default_page_size / s->page_size;

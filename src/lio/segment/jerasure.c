@@ -2032,7 +2032,7 @@ gop_op_generic_t *segjerase_truncate(lio_segment_t *seg, data_attr_t *da, ex_off
 // segjerase_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t segjerase_block_size(lio_segment_t *seg)
+ex_off_t segjerase_block_size(lio_segment_t *seg, int btype)
 {
     segjerase_priv_t *s = (segjerase_priv_t *)seg->priv;
     return(s->data_size);

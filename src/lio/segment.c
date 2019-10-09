@@ -91,6 +91,26 @@ lio_segment_t *load_segment(lio_service_manager_t *ess, ex_id_t id, lio_exnode_e
 }
 
 //***********************************************************************
+// math_gcd - Greatest common Divisor
+//***********************************************************************
+
+ex_off_t math_gcd(ex_off_t a, ex_off_t b)
+{
+    if (a == 0) return(b);
+
+    return(math_gcd(b%a, a));
+}
+
+//***********************************************************************
+// math_lcm - Least Common Multiple
+//***********************************************************************
+
+ex_off_t math_lcm(ex_off_t a, ex_off_t b)
+{
+    return((a*b) / math_gcd(a,b));
+}
+
+//***********************************************************************
 // lio_segment_copy_gop_func - Does the actual segment copy operation
 //***********************************************************************
 
@@ -101,14 +121,22 @@ gop_op_status_t lio_segment_copy_gop_func(void *arg, int id)
     tbx_tbuf_t tbuf1, tbuf2;
     int err;
     ex_off_t bufsize;
-    ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, dend;
+    ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, dend, block_size;
     ex_tbx_iovec_t rex, wex;
     gop_opque_t *q;
     gop_op_generic_t *rgop, *wgop;
     gop_op_status_t status;
 
     //** Set up the buffers
-    bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
+    block_size = math_lcm(segment_block_size(sc->src, LIO_SEGMENT_BLOCK_NATURAL), segment_block_size(sc->dest, LIO_SEGMENT_BLOCK_NATURAL));
+    tlen = sc->bufsize / 2;
+    if ((block_size > tlen) || (sc->src_offset != 0) || (sc->dest_offset != 0)) {  //** LCM is to big or we have offsets so don't try and hit page boundaries
+        bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
+    } else {  //** LCM is good and no offsets
+        tlen = ( tlen / block_size);
+        bufsize = tlen * block_size;
+    }
+
     tbx_tbuf_single(&tbuf1, bufsize, sc->buffer);
     tbx_tbuf_single(&tbuf2, bufsize, &(sc->buffer[bufsize]));
     rbuf = &tbuf1;
@@ -131,7 +159,6 @@ gop_op_status_t lio_segment_copy_gop_func(void *arg, int id)
     //** Read the initial block
     rpos = sc->src_offset;
     wpos = sc->dest_offset;
-//  rlen = (nbytes > bufsize) ? bufsize : nbytes;
     wlen = 0;
     ex_iovec_single(&rex, rpos, rlen);
     rpos += rlen;
@@ -240,6 +267,7 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
     ex_off_t bufsize;
     int err;
     ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, total;
+    ex_off_t block_size, pplen, initial_len, base_len;
     ex_tbx_iovec_t rex;
     apr_time_t loop_start, file_start;
     double dt_loop, dt_file;
@@ -247,7 +275,19 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
     gop_op_status_t status;
 
     //** Set up the buffers
-    bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
+    block_size = segment_block_size(sc->src, LIO_SEGMENT_BLOCK_NATURAL);
+    tlen = (sc->bufsize / 2 / block_size) - 1;
+    pplen = block_size - (sc->src_offset % block_size);
+    if (tlen <= 0) {
+        bufsize = sc->bufsize / 2;
+        initial_len = base_len = bufsize;
+    } else {
+        base_len = tlen * block_size;
+        initial_len = base_len + pplen;
+        if (pplen == block_size) base_len = initial_len;
+        bufsize = initial_len;
+    }
+
     rb = sc->buffer;
     wb = &(sc->buffer[bufsize]);
     tbx_tbuf_single(&tbuf1, bufsize, rb);
@@ -287,6 +327,7 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
     gop_free(gop, OP_DESTROY);
 
     total = 0;
+    bufsize = base_len;  //** Everything else uses the base_len
 
     do {
         //** Swap the buffers
@@ -394,7 +435,8 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
     char *rb, *wb, *tb;
     ex_off_t bufsize;
     int err;
-    ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, dend;
+    ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, dend, block_size;
+    ex_off_t initial_len, base_len, pplen;
     ex_tbx_iovec_t wex;
     gop_op_generic_t *gop;
     gop_op_status_t status;
@@ -402,7 +444,20 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
     double dt_loop, dt_file;
 
     //** Set up the buffers
-    bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
+    block_size = segment_block_size(sc->dest, LIO_SEGMENT_BLOCK_NATURAL);
+    tlen = (sc->bufsize / 2 / block_size) - 1;
+    pplen = block_size - (sc->dest_offset % block_size);
+    if (tlen <= 0) {
+        bufsize = sc->bufsize / 2;
+        initial_len = base_len = bufsize;
+    } else {
+        base_len = tlen * block_size;
+        initial_len = base_len + pplen;
+        if (pplen == block_size) base_len = initial_len;
+        bufsize = initial_len;
+    }
+
+   //** The buffer is split for R/W
     rb = sc->buffer;
     wb = &(sc->buffer[bufsize]);
     tbx_tbuf_single(&tbuf1, bufsize, rb);
@@ -425,6 +480,7 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
     //** Read the initial block
     rpos = 0;
     wpos = sc->dest_offset;
+
     if (nbytes < 0) {
         rlen = bufsize;
     } else {
@@ -449,6 +505,8 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
         goto finished;
     }
     rlen = got;
+
+    bufsize = base_len;  //** Everything else uses the base_len
 
     do {
         //** Swap the buffers

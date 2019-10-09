@@ -2549,11 +2549,13 @@ ex_off_t seglun_size(lio_segment_t *seg)
 // seglun_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t seglun_block_size(lio_segment_t *seg)
+ex_off_t seglun_block_size(lio_segment_t *seg, int btype)
 {
     lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
 
-    return(s->stripe_size);
+    if (btype == LIO_SEGMENT_BLOCK_NATURAL) return(s->stripe_size);
+
+    return(1);
 }
 
 //***********************************************************************

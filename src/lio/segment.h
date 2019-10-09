@@ -25,7 +25,6 @@ lio_segment_t *load_segment(lio_service_manager_t *ess, ex_id_t id, lio_exnode_e
 
 // Preprocessor macros
 #define lio_segment_type(s) (s)->header.type
-#define segment_block_size(s) ((lio_segment_vtable_t *)(s)->obj.vtable)->block_size(s)
 #define segment_clone(s, da, clone_ex, mode, attr, to) \
     ((lio_segment_vtable_t *)(s)->obj.vtable)->clone(s, da, clone_ex, mode, attr, to)
 #define segment_deserialize(s, id, exp) ((lio_segment_vtable_t *)(s)->obj.vtable)->deserialize(s, id, exp)
