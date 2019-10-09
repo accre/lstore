@@ -78,6 +78,7 @@ set(LSTORE_PROJECT_OBJS
 		blacklist.c
 		cache/amp.c
 		cache/base.c
+		cache/direct.c
 		cache/round_robin.c
 		constructor.c
 		cred_default.c
