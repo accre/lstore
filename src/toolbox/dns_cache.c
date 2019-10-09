@@ -92,7 +92,7 @@ int hostname2ip(const char *name, char *ip_bytes, char *ip_text, int ip_text_siz
     hints.ai_flags = AI_CANONNAME;
 
     if ((err = getaddrinfo(name, NULL, &hints, &result)) != 0) {
-        fprintf(stderr, "getaddrinfo: host%s error:%s\n", name, gai_strerror(err));
+        fprintf(stderr, "getaddrinfo: host:%s error:%s\n", name, gai_strerror(err));
         return(-1);
     }
     if (ip_bytes) memcpy(ip_bytes, &((struct sockaddr_in *)result->ai_addr)->sin_addr, 4);
