@@ -94,7 +94,7 @@ struct lio_cache_partial_page_t {
     int flags;
 };
 
-struct lio_cache_lio_segment_t {
+struct lio_cache_segment_t {
     lio_cache_t *c;
     void *cache_priv;
     lio_segment_t *child_seg;
@@ -139,11 +139,14 @@ struct lio_cache_page_t {
     int current_index;
 };
 
+typedef struct lio_page_handle_t lio_page_handle_t;
 struct lio_page_handle_t {
     lio_cache_page_t *p;
     lio_data_page_t *data;
 };
 
+
+typedef struct lio_page_table_t lio_page_table_t;
 struct lio_page_table_t {
     tbx_stack_t *stack;
     lio_segment_t *seg;

@@ -79,7 +79,6 @@ typedef struct {
     int        n_iov;
     int skip_ppages;
     int timeout;
-int dummy;
 } cache_rw_op_t;
 
 typedef struct {
@@ -186,7 +185,7 @@ lio_cache_range_t *cache_new_range(ex_off_t lo, ex_off_t hi, ex_off_t boff, int 
 
 void flush_wait(lio_segment_t *seg, ex_off_t *my_flush)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     int finished;
     ex_off_t *check;
 
@@ -243,7 +242,7 @@ int full_page_overlap(ex_off_t poff, ex_off_t psize, ex_off_t lo, ex_off_t hi)
 
 void _cache_drain_writes(lio_segment_t *seg, lio_cache_page_t *p)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_cond_t *cache_cond;
 
     log_printf(15, "seg=" XIDT " START p->offset=" XOT " cr=%d cw=%d cf=%d bit_fields=%d\n", segment_id(seg),p->offset,
@@ -277,7 +276,7 @@ void _cache_drain_writes(lio_segment_t *seg, lio_cache_page_t *p)
 
 void _cache_wait_for_page(lio_segment_t *seg, int rw_mode, lio_cache_page_t *p)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_cond_t *cache_cond;
 
     cache_cond = (lio_cache_cond_t *)tbx_pch_data(&(p->cond_pch));
@@ -315,7 +314,7 @@ void _cache_wait_for_page(lio_segment_t *seg, int rw_mode, lio_cache_page_t *p)
 
 void s_cache_page_init(lio_segment_t *seg, lio_cache_page_t *p, ex_off_t poff)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
 
     log_printf(15, "s_cache_page_init: seg=" XIDT " p->offset=" XOT " start->offset=" XOT "\n", segment_id(seg), poff, p->offset);
     p->seg = seg;
@@ -337,7 +336,7 @@ void s_cache_page_init(lio_segment_t *seg, lio_cache_page_t *p, ex_off_t poff)
 
 int cache_rw_direct(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t *lo, ex_off_t *hi, ex_off_t *len, ex_off_t *bpos, tbx_tbuf_t *tbuf, int *tb_err, tbx_stack_t *rstack, int iov_slot)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_range_t *r;
     gop_op_status_t status;
     ex_tbx_iovec_t ex_iov;
@@ -395,7 +394,7 @@ int cache_rw_direct(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t 
 
 int cache_rw_pages(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, lio_page_handle_t *plist, int pl_size, int rw_mode, int do_release)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_page_handle_t *ph;
     cache_rw_tbx_iovec_t *cio;
     gop_opque_t *q;
@@ -616,7 +615,7 @@ int cache_rw_pages(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, lio_pag
 
 lio_cache_page_t  *cache_page_force_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t poff, ex_off_t lo, ex_off_t hi)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_page_t *p, *p2;
     lio_page_handle_t ph;
     ex_off_t off_row;
@@ -711,7 +710,7 @@ gop_op_status_t cache_advise_fn(void *arg, int id)
 {
     cache_advise_op_t *ca = (cache_advise_op_t *)arg;
     lio_segment_t *seg = ca->seg;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, coff, poff2, io_size;
     lio_cache_page_t *p, *p2, *np;
     tbx_sl_iter_t it;
@@ -823,7 +822,7 @@ gop_op_status_t cache_advise_fn(void *arg, int id)
 
 void cache_advise(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t lo, ex_off_t hi, lio_page_handle_t *page, int *n_pages, int force_wait)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, nbytes, *poff;
     lio_cache_page_t *p;
     tbx_sl_iter_t it;
@@ -885,7 +884,7 @@ void cache_advise(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, int rw_m
 
 int cache_page_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, coff;
 //  ex_off_t my_flush[3];
     tbx_sl_iter_t it;
@@ -981,7 +980,7 @@ int lio_segment_cache_pages_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi)
 
 int cache_dirty_pages_get(lio_segment_t *seg, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, lio_page_handle_t *page, int *n_pages)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     ex_off_t lo_row, *poff, n, old_hi;
     tbx_sl_iter_t it;
     lio_cache_page_t *p;
@@ -1157,7 +1156,7 @@ void _cache_add_page_to_list(lio_cache_t *c, lio_cache_page_t *p, lio_page_handl
 
 int cache_read_pages_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, lio_page_handle_t *page, tbx_iovec_t *iov, int *n_pages, tbx_tbuf_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, n, old_hi;
     tbx_sl_iter_t it;
     lio_cache_page_t *p;
@@ -1315,7 +1314,7 @@ int cache_read_pages_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, i
 
 int cache_write_pages_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, int mode, ex_off_t lo, ex_off_t hi, ex_off_t *hi_got, lio_page_handle_t *page, tbx_iovec_t *iov, int *n_pages, tbx_tbuf_t *buf, ex_off_t bpos_start, void **cache_missed, ex_off_t master_size)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     ex_off_t lo_row, hi_row, *poff, old_hi, coff, pstart, page_off;
     tbx_sl_iter_t it;
     lio_page_handle_t pload[2];
@@ -1606,7 +1605,7 @@ int cache_write_pages_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, 
 int cache_release_pages(int n_pages, lio_page_handle_t *page_list, int rw_mode)
 {
     lio_segment_t *seg = page_list[0].p->seg;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_page_t *page;
     lio_cache_cond_t *cache_cond;
     int count, i, cow_hit;
@@ -1771,7 +1770,7 @@ int _cache_ppages_range_collapse(lio_cache_partial_page_t *pp)
 
 int _cache_ppages_range_merge(lio_segment_t *seg, lio_cache_partial_page_t *pp, ex_off_t lo, ex_off_t hi)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     ex_off_t *rng, *prng, trng[2];
     int full;
 
@@ -1871,7 +1870,7 @@ int _cache_ppages_range_merge(lio_segment_t *seg, lio_cache_partial_page_t *pp, 
 //   complete being flushed.
 //*******************************************************************************
 
-void _cache_ppages_wait_for_flush_to_complete(lio_cache_lio_segment_t *s)
+void _cache_ppages_wait_for_flush_to_complete(lio_cache_segment_t *s)
 {
     if (s->ppages_flushing != 0) {
         log_printf(5, "Waiting for flush to complete\n");
@@ -1890,7 +1889,7 @@ void _cache_ppages_wait_for_flush_to_complete(lio_cache_lio_segment_t *s)
 
 int _cache_ppages_flush_list(lio_segment_t *seg, data_attr_t *da, tbx_stack_t *pp_list)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_partial_page_t *pp;
     cache_rw_op_t cop;
     ex_tbx_iovec_t *ex_iov;
@@ -2019,7 +2018,7 @@ int _cache_ppages_flush_list(lio_segment_t *seg, data_attr_t *da, tbx_stack_t *p
 
 int _cache_ppages_flush(lio_segment_t *seg, data_attr_t *da)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_partial_page_t *pp;
     tbx_stack_t pp_list;
     ex_off_t ppoff;
@@ -2058,7 +2057,7 @@ int _cache_ppages_flush(lio_segment_t *seg, data_attr_t *da)
 
 int cache_ppages_handle(lio_segment_t *seg, data_attr_t *da, int rw_mode, ex_off_t *lo, ex_off_t *hi, ex_off_t *len, ex_off_t *bpos, tbx_tbuf_t *tbuf, int *tb_err)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_partial_page_t *pp;
     ex_off_t lo_page, hi_page, n_pages, *ppoff, poff, boff, nbytes, pend, nhandled, plo, phi;
     ex_off_t lo_new, hi_new, bpos_new;
@@ -2393,7 +2392,7 @@ gop_op_status_t cache_rw_func(void *arg, int id)
 {
     cache_rw_op_t *cop = (cache_rw_op_t *)arg;
     lio_segment_t *seg = cop->seg;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_page_handle_t page[CACHE_MAX_PAGES_RETURNED];
     tbx_iovec_t iov[CACHE_MAX_PAGES_RETURNED];
     int status, n_pages;
@@ -2647,7 +2646,7 @@ gop_op_status_t cache_rw_func(void *arg, int id)
 gop_op_generic_t *cache_read(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     cache_rw_op_t *cop;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
 
     tbx_type_malloc_clear(cop, cache_rw_op_t, 1);
     cop->seg = seg;
@@ -2670,7 +2669,7 @@ gop_op_generic_t *cache_read(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
 gop_op_generic_t *cache_write(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout)
 {
     cache_rw_op_t *cop;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
 
     tbx_type_malloc_clear(cop, cache_rw_op_t, 1);
     cop->seg = seg;
@@ -2693,7 +2692,7 @@ gop_op_generic_t *cache_write(lio_segment_t *seg, data_attr_t *da, lio_segment_r
 gop_op_status_t cache_flush_range_gop_func(void *arg, int id)
 {
     cache_rw_op_t *cop = (cache_rw_op_t *)arg;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)cop->seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)cop->seg->priv;
     lio_page_handle_t page[CACHE_MAX_PAGES_RETURNED];
     ex_id_t sid;
     int status, n_pages, max_pages, total_pages;
@@ -2827,7 +2826,7 @@ finished:
 gop_op_generic_t *cache_flush_range_gop(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout)
 {
     cache_rw_op_t *cop;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
 
     tbx_type_malloc(cop, cache_rw_op_t, 1);
     cop->seg = seg;
@@ -2856,7 +2855,7 @@ gop_op_generic_t *cache_flush_range_gop(lio_segment_t *seg, data_attr_t *da, ex_
 
 lio_cache_stats_get_t segment_lio_cache_stats_get(lio_segment_t *seg)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_stats_get_t cs;
 
     segment_lock(seg);
@@ -2873,7 +2872,7 @@ lio_cache_stats_get_t segment_lio_cache_stats_get(lio_segment_t *seg)
 
 int lio_cache_stats_get(lio_cache_t *c, lio_cache_stats_get_t *cs)
 {
-    lio_cache_lio_segment_t *s;
+    lio_cache_segment_t *s;
     tbx_list_iter_t it;
     lio_segment_t *seg2;
     ex_id_t *sid2;
@@ -2889,7 +2888,7 @@ int lio_cache_stats_get(lio_cache_t *c, lio_cache_stats_get_t *cs)
 
         if (seg2 != NULL) {
             if (apr_thread_mutex_trylock(seg2->lock) == APR_SUCCESS) {
-                s = (lio_cache_lio_segment_t *)seg2->priv;
+                s = (lio_cache_segment_t *)seg2->priv;
                 cs->system.read_count += s->stats.system.read_count;
                 cs->system.write_count += s->stats.system.write_count;
                 cs->system.read_bytes += s->stats.system.read_bytes;
@@ -2977,7 +2976,7 @@ int lio_cache_stats_get_print(lio_cache_stats_get_t *cs, char *buffer, int *used
 
 gop_op_generic_t *segcache_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log_fd_t *fd, int mode, ex_off_t bufsize, lio_inspect_args_t *args, int timeout)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_ex3_inspect_command_t cmd = mode & INSPECT_COMMAND_BITS;
 
     if ((cmd != INSPECT_SOFT_ERRORS) && (cmd != INSPECT_HARD_ERRORS) && (cmd != INSPECT_WRITE_ERRORS)) {
@@ -3001,7 +3000,7 @@ gop_op_generic_t *segcache_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log_
 gop_op_status_t seglio_cache_truncate_func(void *arg, int id)
 {
     lio_cache_truncate_op_t *cop = (lio_cache_truncate_op_t *)arg;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)cop->seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)cop->seg->priv;
     ex_off_t old_size;
     gop_op_generic_t *gop;
     int err1, err2;
@@ -3067,7 +3066,7 @@ gop_op_status_t seglio_cache_truncate_func(void *arg, int id)
 
 gop_op_generic_t *seglio_cache_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_truncate_op_t *cop;
     gop_op_generic_t *gop;
 
@@ -3110,7 +3109,7 @@ gop_op_status_t segcache_clone_func(void *arg, int id)
 
 int segcache_signature(lio_segment_t *seg, char *buffer, int *used, int bufsize)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
 
     tbx_append_printf(buffer, used, bufsize, "cache()\n");
 
@@ -3124,11 +3123,11 @@ int segcache_signature(lio_segment_t *seg, char *buffer, int *used, int bufsize)
 gop_op_generic_t *segcache_clone(lio_segment_t *seg, data_attr_t *da, lio_segment_t **clone_seg, int mode, void *arg, int timeout)
 {
     lio_segment_t *clone;
-    lio_cache_lio_segment_t *ss, *sd;
+    lio_cache_segment_t *ss, *sd;
     cache_clone_t *cop;
     int use_existing = (*clone_seg != NULL) ? 1 : 0;
 
-    ss = (lio_cache_lio_segment_t *)seg->priv;
+    ss = (lio_cache_segment_t *)seg->priv;
 
     //** Sanity check the child first
     if (segment_size(ss->child_seg) < segment_size(seg)) {
@@ -3139,7 +3138,7 @@ gop_op_generic_t *segcache_clone(lio_segment_t *seg, data_attr_t *da, lio_segmen
     //** Make the base segment
     if (use_existing == 0) *clone_seg = segment_cache_create(seg->ess);
     clone = *clone_seg;
-    sd = (lio_cache_lio_segment_t *)clone->priv;
+    sd = (lio_cache_segment_t *)clone->priv;
 
     //** Copy the header
     if ((seg->header.name != NULL) && (use_existing == 0)) clone->header.name = strdup(seg->header.name);
@@ -3164,7 +3163,7 @@ gop_op_generic_t *segcache_clone(lio_segment_t *seg, data_attr_t *da, lio_segmen
 
 ex_off_t segcache_size(lio_segment_t *seg)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     ex_off_t size;
 
     if (s->c) cache_lock(s->c);
@@ -3182,7 +3181,7 @@ ex_off_t segcache_size(lio_segment_t *seg)
 
 ex_off_t segcache_block_size(lio_segment_t *seg, int btype)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
 
     if (btype == LIO_SEGMENT_BLOCK_NATURAL) return(segment_block_size(s->child_seg, btype));
 
@@ -3196,7 +3195,7 @@ ex_off_t segcache_block_size(lio_segment_t *seg, int btype)
 
 gop_op_generic_t *segcache_remove(lio_segment_t *seg, data_attr_t *da, int timeout)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
 
     cache_page_drop(seg, 0, s->total_size + 1);
     return(segment_remove(s->child_seg, da, timeout));
@@ -3208,7 +3207,7 @@ gop_op_generic_t *segcache_remove(lio_segment_t *seg, data_attr_t *da, int timeo
 
 int segcache_serialize_text(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     int bufsize=1024*1024;
     char segbuf[bufsize];
     char *etext;
@@ -3279,7 +3278,7 @@ int segcache_serialize(lio_segment_t *seg, lio_exnode_exchange_t *exp)
 
 int segcache_deserialize_text(lio_segment_t *seg, ex_id_t myid, lio_exnode_exchange_t *exp)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     int bufsize=1024;
     char seggrp[bufsize];
     char qname[512];
@@ -3414,7 +3413,7 @@ void segcache_destroy(tbx_ref_t *ref)
 {
     tbx_obj_t *obj = container_of(ref, tbx_obj_t, refcount);
     lio_segment_t *seg = container_of(obj, lio_segment_t, obj);
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     gop_op_generic_t *gop;
     int i;
 
@@ -3520,13 +3519,13 @@ void segcache_destroy(tbx_ref_t *ref)
 lio_segment_t *segment_cache_create(void *arg)
 {
     lio_service_manager_t *es = (lio_service_manager_t *)arg;
-    lio_cache_lio_segment_t *s;
+    lio_cache_segment_t *s;
     lio_segment_t *seg;
     char qname[512];
 
     //** Make the space
     tbx_type_malloc_clear(seg, lio_segment_t, 1);
-    tbx_type_malloc_clear(s, lio_cache_lio_segment_t, 1);
+    tbx_type_malloc_clear(s, lio_cache_segment_t, 1);
     tbx_obj_init(&seg->obj, (tbx_vtable_t *) &lio_cacheseg_vtable);
     assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);

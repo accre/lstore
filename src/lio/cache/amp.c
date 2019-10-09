@@ -186,7 +186,7 @@ finished:
 void _amp_free_page_push(lio_cache_t *c, lio_cache_page_t *p)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)p->seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)p->seg->priv;
     lio_page_amp_t *lp;
 
     p->offset = s->page_size;
@@ -246,7 +246,7 @@ ex_off_t _amp_max_bytes(lio_cache_t *c)
 
 lio_amp_page_stream_t *_amp_stream_get(lio_cache_t *c, lio_segment_t *seg, ex_off_t offset, ex_off_t nbytes, lio_amp_page_stream_t **pse)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_amp_stream_table_t *as = (lio_amp_stream_table_t *)s->cache_priv;
     lio_amp_page_stream_t *ps, *ps2;
     tbx_list_iter_t it;
@@ -322,7 +322,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
     lio_segment_t *seg;
     gop_opque_t *q;
     gop_op_generic_t *gop;
-    lio_cache_lio_segment_t *s;
+    lio_cache_segment_t *s;
     tbx_sl_iter_t it;
     lio_segment_t **flush_list;
 
@@ -350,7 +350,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
             log_printf(15, "Flushing seg=" XIDT " i=%d\n", *id, i);
             tbx_log_flush();
             flush_list[i] = seg;
-            s = (lio_cache_lio_segment_t *)seg->priv;
+            s = (lio_cache_segment_t *)seg->priv;
             s->cache_check_in_progress++;  //** Flag it as being checked
             gop = cache_flush_range_gop(seg, s->c->da, 0, -1, s->c->timeout);
             gop_set_myid(gop, i);
@@ -365,7 +365,7 @@ void *amp_dirty_thread(apr_thread_t *th, void *data)
         opque_start_execution(q);
         while ((gop = opque_waitany(q)) != NULL) {
             i = gop_get_myid(gop);
-            s = (lio_cache_lio_segment_t *)flush_list[i]->priv;
+            s = (lio_cache_segment_t *)flush_list[i]->priv;
 
             log_printf(15, "Flush completed seg=" XIDT " i=%d\n", segment_id(flush_list[i]), i);
             tbx_log_flush();
@@ -459,7 +459,7 @@ lio_cache_page_t *_amp_free_page_fetch(lio_cache_t *c, ex_off_t page_size)
 lio_cache_page_t *_amp_new_page(lio_cache_t *c, lio_segment_t *seg)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_page_amp_t *lp;
     lio_cache_page_t *p;
 
@@ -540,7 +540,7 @@ gop_op_status_t amp_prefetch_fn(void *arg, int id)
 {
     amp_prefetch_op_t *ap = (amp_prefetch_op_t *)arg;
     lio_segment_t *seg = ap->seg;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_amp_t *cp = (lio_cache_amp_t *)s->c->fn.priv;
     lio_page_handle_t page[CACHE_MAX_PAGES_RETURNED];
     lio_cache_page_t *p;
@@ -656,7 +656,7 @@ gop_op_status_t amp_prefetch_fn(void *arg, int id)
 
 void _amp_prefetch(lio_segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefetch, int start_trigger)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_amp_t *cp = (lio_cache_amp_t *)s->c->fn.priv;
     ex_off_t lo_row, hi_row, nbytes, dn;
     amp_prefetch_op_t *ca;
@@ -736,7 +736,7 @@ void _amp_prefetch(lio_segment_t *seg, ex_off_t lo, ex_off_t hi, int start_prefe
 int _amp_pages_release(lio_cache_t *c, lio_cache_page_t **page, int n_pages)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s;
+    lio_cache_segment_t *s;
     lio_page_amp_t *lp;
     lio_cache_page_t *p;
     int i;
@@ -746,7 +746,7 @@ int _amp_pages_release(lio_cache_t *c, lio_cache_page_t **page, int n_pages)
         log_printf(15, "seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used);
         if ((p->bit_fields & C_TORELEASE) > 0) {
             log_printf(15, "DESTROYING seg=" XIDT " p->offset=" XOT " bits=%d bytes_used=" XOT "cache_pages=%d\n", segment_id(p->seg), p->offset, p->bit_fields, cp->bytes_used, tbx_stack_count(cp->stack));
-            s = (lio_cache_lio_segment_t *)p->seg->priv;
+            s = (lio_cache_segment_t *)p->seg->priv;
             lp = (lio_page_amp_t *)p->priv;
 
             cp->bytes_used -= s->page_size;
@@ -783,7 +783,7 @@ int _amp_pages_release(lio_cache_t *c, lio_cache_page_t **page, int n_pages)
 void _amp_pages_destroy(lio_cache_t *c, lio_cache_page_t **page, int n_pages, int remove_from_segment)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s;
+    lio_cache_segment_t *s;
     lio_page_amp_t *lp;
     lio_cache_page_t *p;
     int i, count;
@@ -792,7 +792,7 @@ void _amp_pages_destroy(lio_cache_t *c, lio_cache_page_t **page, int n_pages, in
 
     for (i=0; i<n_pages; i++) {
         p = page[i];
-        s = (lio_cache_lio_segment_t *)p->seg->priv;
+        s = (lio_cache_segment_t *)p->seg->priv;
 
         count = p->access_pending[CACHE_READ] + p->access_pending[CACHE_WRITE] + p->access_pending[CACHE_FLUSH];
 
@@ -807,7 +807,7 @@ void _amp_pages_destroy(lio_cache_t *c, lio_cache_page_t **page, int n_pages, in
             }
 
             if (remove_from_segment == 1) {
-                s = (lio_cache_lio_segment_t *)p->seg->priv;
+                s = (lio_cache_segment_t *)p->seg->priv;
                 tbx_list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
             }
 
@@ -831,7 +831,7 @@ void _amp_pages_destroy(lio_cache_t *c, lio_cache_page_t **page, int n_pages, in
 int _amp_page_access(lio_cache_t *c, lio_cache_page_t *p, int rw_mode, ex_off_t request_len)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)p->seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)p->seg->priv;
     lio_page_amp_t *lp = (lio_page_amp_t *)p->priv;
     lio_amp_page_stream_t *ps, *pse;
     ex_off_t lo, hi, psize, last_offset;
@@ -907,7 +907,7 @@ int _amp_page_access(lio_cache_t *c, lio_cache_page_t *p, int rw_mode, ex_off_t 
 int _amp_free_mem(lio_cache_t *c, lio_segment_t *pseg, ex_off_t bytes_to_free)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s;
+    lio_cache_segment_t *s;
     lio_cache_page_t *p;
     lio_page_amp_t *lp;
     tbx_stack_ele_t *ele;
@@ -928,7 +928,7 @@ int _amp_free_mem(lio_cache_t *c, lio_segment_t *pseg, ex_off_t bytes_to_free)
             count = p->access_pending[CACHE_READ] + p->access_pending[CACHE_WRITE] + p->access_pending[CACHE_FLUSH];
             if (count == 0) { //** No one is using it
                 if (((p->bit_fields & C_ISDIRTY) == 0) && ((lp->bit_fields & (CAMP_OLD|CAMP_ACCESSED)) > 0)) {  //** Don't have to flush it
-                    s = (lio_cache_lio_segment_t *)p->seg->priv;
+                    s = (lio_cache_segment_t *)p->seg->priv;
                     total_bytes += s->page_size;
                     log_printf(_amp_logging, "amp_free_mem: freeing page seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, p->bit_fields);
                     tbx_list_remove(s->pages, &(p->offset), p);  //** Have to do this here cause p->offset is the key var
@@ -962,7 +962,7 @@ int _amp_free_mem(lio_cache_t *c, lio_segment_t *pseg, ex_off_t bytes_to_free)
 ex_off_t _amp_attempt_free_mem(lio_cache_t *c, lio_segment_t *page_seg, ex_off_t bytes_to_free)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s = NULL;
+    lio_cache_segment_t *s = NULL;
     lio_cache_page_t *p;
     lio_page_amp_t *lp;
     tbx_stack_ele_t *ele, *curr_ele;
@@ -994,7 +994,7 @@ ex_off_t _amp_attempt_free_mem(lio_cache_t *c, lio_segment_t *page_seg, ex_off_t
     while ((total_bytes < bytes_to_free) && (ele != NULL)) {
         p = (lio_cache_page_t *)tbx_stack_ele_get_data(ele);
         lp = (lio_page_amp_t *)p->priv;
-        s = (lio_cache_lio_segment_t *)p->seg->priv;
+        s = (lio_cache_segment_t *)p->seg->priv;
 
         log_printf(15, "checking page for release seg=" XIDT " p->offset=" XOT " bits=%d\n", segment_id(p->seg), p->offset, p->bit_fields);
         tbx_log_flush();
@@ -1139,7 +1139,7 @@ ex_off_t _amp_attempt_free_mem(lio_cache_t *c, lio_segment_t *page_seg, ex_off_t
 
 ex_off_t _amp_force_free_mem(lio_cache_t *c, lio_segment_t *page_seg, ex_off_t bytes_to_free, int check_waiters)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)page_seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)page_seg->priv;
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
     ex_off_t freed_bytes, bytes_left;
     int top;
@@ -1185,7 +1185,7 @@ ex_off_t _amp_force_free_mem(lio_cache_t *c, lio_segment_t *page_seg, ex_off_t b
 void _amp_wait_for_page(lio_cache_t *c, lio_segment_t *seg, int ontop)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_amp_page_wait_t pw;
     tbx_pch_t pch;
     lio_cache_cond_t *cc;
@@ -1234,7 +1234,7 @@ void _amp_wait_for_page(lio_cache_t *c, lio_segment_t *seg, int ontop)
 lio_cache_page_t *_amp_create_empty_page(lio_cache_t *c, lio_segment_t *seg, int doblock)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     ex_off_t max_bytes, bytes_to_free;
     lio_cache_page_t *p = NULL;
     int qend;
@@ -1268,7 +1268,7 @@ lio_cache_page_t *_amp_create_empty_page(lio_cache_t *c, lio_segment_t *seg, int
 
 void amp_update(lio_cache_t *c, lio_segment_t *seg, int rw_mode, ex_off_t lo, ex_off_t hi, void *miss_info)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_amp_stream_table_t *as = (lio_amp_stream_table_t *)s->cache_priv;
     int prevp, npages;
     ex_off_t offset, *poff, nbytes;
@@ -1368,7 +1368,7 @@ void _amp_miss_tag(lio_cache_t *c, lio_segment_t *seg, int mode, ex_off_t lo, ex
 void amp_adding_segment(lio_cache_t *c, lio_segment_t *seg)
 {
     lio_cache_amp_t *cp = (lio_cache_amp_t *)c->fn.priv;
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_amp_stream_table_t *stable;
     int i;
 
@@ -1398,7 +1398,7 @@ void amp_adding_segment(lio_cache_t *c, lio_segment_t *seg)
 
 void amp_removing_segment(lio_cache_t *c, lio_segment_t *seg)
 {
-    lio_cache_lio_segment_t *s = (lio_cache_lio_segment_t *)seg->priv;
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_amp_stream_table_t *stable = (lio_amp_stream_table_t *)s->cache_priv;
 
     tbx_list_destroy(stable->streams);
