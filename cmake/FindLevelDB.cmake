@@ -20,7 +20,7 @@ endif ()
 if (LEVELDB_FOUND)
    message(STATUS "Found LevelDB: ${LEVELDB_LIBRARY} ${LEVELDB_INCLUDE_DIR}")
 else ()
-   message(STATUS "Could not find LevelDB library")
+   message(STATUS "Could not find LevelDB library LIB=${LEVELDB_LIBRARY} INC=${LEVELDB_INCLUDE_DIR}")
 endif ()
 
 
