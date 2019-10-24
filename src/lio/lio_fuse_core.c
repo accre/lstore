@@ -41,6 +41,7 @@
 #include <tbx/assert_result.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
+#include <tbx/siginfo.h>
 #include <tbx/stack.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
@@ -200,8 +201,8 @@ void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char 
     }
 
     stat->st_size = (n & OS_OBJECT_SYMLINK_FLAG) ? readlink : len;
-    stat->st_blksize = 4096;
-    stat->st_blocks = stat->st_size / 512;
+    stat->st_blksize = 6*16*1024;
+    stat->st_blocks = stat->st_size / stat->st_blksize;
     if (stat->st_size < 1024) stat->st_blksize = 1024;
 
     //** N-links
@@ -713,7 +714,11 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
     now = apr_time_now();
 
     //** Do the read op
+    tbx_atomic_inc(lfs->read_cmds_inflight);
+    tbx_atomic_add(lfs->read_bytes_inflight, size);
     nbytes = lio_read(fd, buf, size, off, lfs->rw_hints);
+    tbx_atomic_dec(lfs->read_cmds_inflight);
+    tbx_atomic_sub(lfs->read_bytes_inflight, size);
 
     if (tbx_log_level() > 0) {
         t2 = size+off-1;
@@ -747,7 +752,11 @@ int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct
     }
 
     //** Do the write op
+    tbx_atomic_inc(lfs->write_cmds_inflight);
+    tbx_atomic_add(lfs->write_bytes_inflight, size);
     nbytes = lio_write(fd, (char *)buf, size, off, lfs->rw_hints);
+    tbx_atomic_dec(lfs->write_cmds_inflight);
+    tbx_atomic_sub(lfs->write_bytes_inflight, size);
     return(nbytes);
 }
 
@@ -1515,8 +1524,8 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
     free(config);
 
     fs->f_bsize = 4096;
-    fs->f_blocks = space.total_up / 4096;
-    fs->f_bfree = space.free_up / 4096;
+    fs->f_blocks = space.total_up / fs->f_bsize;;
+    fs->f_bfree = space.free_up / fs->f_bsize;
     fs->f_bavail = fs->f_bfree;
     fs->f_files = 1;
     fs->f_ffree = 10*1024*1024;
@@ -1525,6 +1534,26 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
     return(0);
 }
 
+//*************************************************************************
+// lio_fuse_info_fn - Signal handler to dump info
+//*************************************************************************
+
+void lio_fuse_info_fn(void *arg, FILE *fd)
+{
+    lio_fuse_t *lfs = arg;
+    int n;
+    char ppbuf[100];
+
+    fprintf(fd, "---------------------------------- LFS config start --------------------------------------------\n");
+    fprintf(fd, "mount_point = %s\n", lfs->mount_point);
+    fprintf(fd, "enable_tape = %d\n", lfs->enable_tape);
+    fprintf(fd, "n_merge = %d\n", lfs->n_merge);
+    n = tbx_atomic_get(lfs->write_cmds_inflight); fprintf(fd, "write_cmds_inflight = %d\n", n);
+    n = tbx_atomic_get(lfs->write_bytes_inflight); fprintf(fd, "write_bytes_inflight = %s\n", tbx_stk_pretty_print_double_with_scale(1024, n, ppbuf));
+    n = tbx_atomic_get(lfs->read_cmds_inflight); fprintf(fd, "read_cmds_inflight = %d\n", n);
+    n = tbx_atomic_get(lfs->read_bytes_inflight); fprintf(fd, "read_bytes_inflight = %s\n", tbx_stk_pretty_print_double_with_scale(1024, n, ppbuf));
+    fprintf(fd, "---------------------------------- LFS config end --------------------------------------------\n");
+}
 
 //*************************************************************************
 //  lio_fuse_init - Creates a lowlevel fuse handle for use
@@ -1609,6 +1638,8 @@ void *lfs_init_real(struct fuse_conn_info *conn,
     //lfs->fops = ctx->fuse->fuse_fs->op;
     lfs->fops = lfs_fops;
 
+    tbx_siginfo_handler_add(SIGUSR1, lio_fuse_info_fn, lfs);
+
     log_printf(15, "END\n");
     return(lfs); //
 }
@@ -1641,6 +1672,8 @@ void lfs_destroy(void *private_data)
         log_printf(0,"lio_fuse_destroy: Error, the lfs handle is null, unable to shutdown cleanly. Perhaps lfs creation failed?");
         return;
     }
+
+    tbx_siginfo_handler_remove(SIGUSR1, lio_fuse_info_fn, lfs);
 
     //** We're ignoring cleaning up the open files table since were only using this on FUSE and FUSE should have closed all files
 
