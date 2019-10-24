@@ -1512,7 +1512,7 @@ lio_cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout)
     tbx_type_malloc_clear(cache, lio_cache_t, 1);
     tbx_type_malloc_clear(c, lio_cache_amp_t, 1);
     cache->fn.priv = c;
-
+    cache->type = CACHE_TYPE_AMP;
     cache_base_create(cache, da, timeout);
 
     c->section = strdup(amp_default_options.section);

@@ -87,6 +87,7 @@ lio_cache_t *direct_cache_create(void *arg, data_attr_t *da, int timeout)
 
     tbx_type_malloc_clear(cache, lio_cache_t, 1);
     tbx_type_malloc_clear(c, cache_direct_t, 1);
+    cache->type = CACHE_TYPE_DIRECT;
     cache->fn.priv = c;
     if (!cache->fn.priv) {
         log_printf(0,"ERROR: a null priv structure was malloc()d");
@@ -117,11 +118,9 @@ lio_cache_t *direct_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_a
     cp = (cache_direct_t *)c->fn.priv;
 
     if (grp != NULL) {
-        free(cp->section);
+        if (cp->section) free(cp->section);
         cp->section = strdup(grp);
     }
-
-    cp->section = strdup(grp);
 
     return(c);
 }

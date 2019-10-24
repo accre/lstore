@@ -106,14 +106,18 @@ struct lio_cache_segment_t {
     apr_thread_cond_t  *ppages_cond;
     tbx_stack_t *flush_stack;
     tbx_stack_t *ppages_unused;
+    tbx_stack_t *dio_pending;
+    tbx_stack_t *dio_execing;
     char *qname;
     lio_cache_partial_page_t *ppage;
     char *ppages_buffer;
+    int direct_io;
     int cache_check_in_progress;
     int flushing_count;
     int n_ppages;
     int ppages_used;
     int ppages_flushing;
+    ex_off_t priority_counter;
     ex_off_t ppage_max;
     ex_off_t page_size;
     ex_off_t child_last_page;
@@ -178,6 +182,7 @@ struct lio_cache_t {
     tbx_list_t *segments;
     tbx_pc_t *cond_coop;
     data_attr_t *da;
+    char *type;
     ex_off_t default_page_size;
     lio_cache_stats_get_t stats;
     ex_off_t max_fetch_size;

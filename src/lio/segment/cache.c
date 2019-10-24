@@ -49,6 +49,7 @@
 #include <unistd.h>
 
 #include "cache.h"
+#include "cache/direct.h"
 #include "ds.h"
 #include "ex3.h"
 #include "ex3/compare.h"
@@ -60,6 +61,7 @@
 #define XOT_MAX (LONG_MAX-2)
 
 const lio_segment_vtable_t lio_cacheseg_vtable;
+
 typedef struct {
     lio_segment_t *seg;
     data_attr_t *da;
@@ -114,6 +116,498 @@ tbx_atomic_int_t _flush_count = 0;
 
 gop_op_status_t cache_rw_func(void *arg, int id);
 int _cache_ppages_flush(lio_segment_t *seg, data_attr_t *da);
+
+typedef struct {
+    char *lo_buf;
+    char *hi_buf;
+    tbx_tbuf_t *tbuf;
+    size_t lo_extra;
+    size_t hi_extra;
+    size_t hi_poff;
+    size_t hi_pstart;
+    size_t page_size;
+    ex_off_t blen;
+    ex_off_t tbuf_bpos;
+} dio_tbuf_t;
+
+typedef struct {
+    ex_off_t lo;
+    ex_off_t hi;
+    ex_off_t priority;
+    int rw_mode;
+} dio_range_lock_t;
+
+//*******************************************************************************
+//  ------ Direct I/O notes on how the buffers are handled --------
+//
+//  The lower level segment drivers can handle buffer chunks that are less than
+//  the ideal page size but they do so inefficiently by directly allocating and
+//  freeing memory.  In order to get around this the buffer be pass into the
+//  child segment R/W routines doesn't stitch the lo/user/hi page buffers into a
+//  uniform stream so no external copying is needed.  Instead we use the full
+//  lo and hi buffers and lop off the user buffer ends to match with page
+//  boundaries.  As a result we have an extra copy step to handle the partial
+//  pages.
+//
+//  LLLLLLLLLLLLLLLLL                     HHHHHHHHHHHHHHHHHHHH
+//             UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU
+//
+//  L=Lo, U=user, H=hi page bufffers.  The overlapping regions need to be
+//  copied over manually
+//
+//*******************************************************************************
+
+//*******************************************************************************
+//  dio_read_range_check - checks the que for overlap based on priority
+//*******************************************************************************
+
+int dio_read_range_check(tbx_stack_t *stack, dio_range_lock_t *r)
+{
+    dio_range_lock_t *d;
+
+    tbx_stack_move_to_top(stack);
+    while ((d = tbx_stack_get_current_data(stack)) != NULL) {
+        if (d->rw_mode == CACHE_WRITE) {
+            if (d->priority < r->priority) {
+                if (!((d->hi < r->lo) && (d->lo > r->hi))) return(0); //** Got a hit
+            }
+        } else {  //** Hit the read portion so can return with success
+            return(1);
+        }
+        tbx_stack_move_down(stack);
+    }
+
+    return(1);
+}
+
+//*******************************************************************************
+//  dio_write_range_check - checks the que for overlap based on priority
+//*******************************************************************************
+
+int dio_write_range_check(tbx_stack_t *stack, dio_range_lock_t *r)
+{
+    dio_range_lock_t *d;
+
+    tbx_stack_move_to_bottom(stack);
+    while ((d = tbx_stack_get_current_data(stack)) != NULL) {
+        if (d->priority < r->priority) {
+            if (!((d->hi < r->lo) && (d->lo > r->hi))) return(0); //** Got a hit
+        }
+        tbx_stack_move_up(stack);
+    }
+
+    return(1);
+}
+
+//*******************************************************************************
+//   _dio_read_range_lock - Handles acquiring a read byte range lock
+//*******************************************************************************
+
+void _dio_read_range_lock(lio_segment_t *seg, dio_range_lock_t *r, tbx_stack_ele_t *ele)
+{
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
+
+    //** checking the executing for a conflict
+    if (dio_read_range_check(s->dio_execing, r) == 1) {
+        if (dio_read_range_check(s->dio_pending, r) == 1) goto got_lucky;
+    }
+
+    //** Got a conflict so add ourselves to the pending queue
+    tbx_stack_move_to_bottom(s->dio_pending);
+    tbx_stack_link_insert_below(s->dio_pending, ele);
+
+    //** Now wait until something changes
+    do {
+        apr_thread_cond_wait(seg->cond, seg->lock);
+        if (dio_read_range_check(s->dio_execing, r) == 1) {
+            if (dio_read_range_check(s->dio_pending, r) == 1) {
+                //** Unlink ourselves from the pending queue
+                tbx_stack_move_to_ptr(s->dio_pending, ele);
+                tbx_stack_unlink_current(s->dio_pending, 1);
+                goto got_lucky;
+            }
+        }
+    } while (1);
+
+got_lucky:
+    //** Add ourselves to the execution queue
+    tbx_stack_move_to_bottom(s->dio_execing);
+    tbx_stack_link_insert_below(s->dio_execing, ele);
+
+    return;
+}
+
+//*******************************************************************************
+//   _dio_write_range_lock - Handles acquiring a write byte range lock
+//*******************************************************************************
+
+void _dio_write_range_lock(lio_segment_t *seg, dio_range_lock_t *r, tbx_stack_ele_t *ele)
+{
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
+
+    //** checking the executing for a conflict
+    if (dio_write_range_check(s->dio_execing, r) == 1) {
+        if (dio_write_range_check(s->dio_pending, r) == 1) goto got_lucky;
+    }
+
+    //** Got a conflict so add ourselves to the pending queue
+    tbx_stack_move_to_top(s->dio_pending);
+    tbx_stack_link_insert_above(s->dio_pending, ele);
+
+    //** Now wait until something changes
+    do {
+        apr_thread_cond_wait(seg->cond, seg->lock);
+        if (dio_write_range_check(s->dio_execing, r) == 1) {
+            if (dio_write_range_check(s->dio_pending, r) == 1) {
+                //** Unlink ourselves from the pending queue
+                tbx_stack_move_to_ptr(s->dio_pending, ele);
+                tbx_stack_unlink_current(s->dio_pending, 1);
+                goto got_lucky;
+            }
+        }
+    } while (1);
+
+got_lucky:
+    //** Add ourselves to the execution queue
+    tbx_stack_move_to_top(s->dio_execing);
+    tbx_stack_link_insert_above(s->dio_execing, ele);
+
+    return;
+}
+
+//*******************************************************************************
+// dio_range_lock - Locks the range for Direct I/O
+//*******************************************************************************
+
+void dio_range_lock(lio_segment_t *seg, dio_range_lock_t *r, tbx_stack_ele_t *ele)
+{
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
+    dio_range_lock_t *d;
+
+    ele->data = r;
+
+    segment_lock(seg);
+
+    //** Check the priority for wraparound
+    if (s->priority_counter > ((ex_off_t)(1)<<40)) {
+        tbx_stack_move_to_bottom(s->dio_pending);
+        s->priority_counter = 0;
+        while ((d = tbx_stack_get_current_data(s->dio_pending)) != NULL) {
+            d->priority = s->priority_counter;
+            s->priority_counter++;
+            tbx_stack_move_up(s->dio_pending);
+        }
+    }
+
+    //** Set the current tasks priority
+    r->priority = s->priority_counter;
+    s->priority_counter++;
+
+    //** Handle the insertion
+    if (r->rw_mode == CACHE_READ) {
+        _dio_read_range_lock(seg, r, ele);
+    } else {
+        _dio_write_range_lock(seg, r, ele);
+    }
+    segment_unlock(seg);
+}
+
+//*******************************************************************************
+// dio_range_unlock - Releases the Direct I/O range
+//*******************************************************************************
+
+void dio_range_unlock(lio_segment_t *seg, dio_range_lock_t *r, tbx_stack_ele_t *ele)
+{
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
+
+    segment_lock(seg);
+    tbx_stack_move_to_ptr(s->dio_execing, ele);
+    tbx_stack_unlink_current(s->dio_execing, 1);
+    apr_thread_cond_broadcast(seg->cond);
+    segment_unlock(seg);
+}
+
+//*******************************************************************************
+// dio_next_block_merged - Direct I/O transfer buffer function to handle edges
+//*******************************************************************************
+
+int dio_next_block_merged(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv)
+{
+    dio_tbuf_t *tdio = (dio_tbuf_t *)tb->arg;
+    size_t c1, c2, bpos, nbytes;
+
+    c1 = tdio->lo_extra + tdio->blen;
+    c2 = c1 + tdio->hi_extra;
+
+    if (pos < tdio->lo_extra) {  //** We start in the lo buffer
+        nbytes = tdio->lo_extra - pos;
+        tbv->n_iov = 1;
+        tbv->buffer = &(tbv->priv.single);
+        tbv->priv.single.iov_len = (nbytes > tbv->nbytes) ? tbv->nbytes : nbytes;  //** return just enough bytes to hit the buffer
+        tbv->priv.single.iov_base = tdio->lo_buf + pos;
+        tbv->nbytes = tbv->priv.single.iov_len;
+        return(TBUFFER_OK);
+    } else if (pos < c1) {  //** Starting in the user tbuf
+        bpos = tdio->tbuf_bpos + pos - tdio->lo_extra; //** This is the starting position relative to the original tbu
+        nbytes = tdio->blen - bpos + 1;    //** Max bytes we can transfer
+        if (nbytes > tbv->nbytes) tbv->nbytes = nbytes;  //** Truncate if needed
+        return(tbx_tbuf_next(tdio->tbuf, bpos, tbv));  //** Return the original tbuf
+    } else if (pos < c2) {  //** Starting in the hi buffer
+        bpos = pos - tdio->lo_extra - tdio->blen;
+        nbytes = tdio->hi_extra - bpos;
+        tbv->n_iov = 1;
+        tbv->buffer = &(tbv->priv.single);
+        tbv->priv.single.iov_len = (nbytes > tbv->nbytes) ? tbv->nbytes : nbytes;  //** return just enough bytes to hit the end
+        tbv->priv.single.iov_base = tdio->hi_buf + tdio->hi_poff + bpos;
+        tbv->nbytes = tbv->priv.single.iov_len;
+        return(TBUFFER_OK);
+    }
+
+    return(TBUFFER_OUTOFSPACE);
+}
+
+//*******************************************************************************
+// dio_next_block - Direct I/O transfer buffer function to handle edges
+//*******************************************************************************
+
+int dio_next_block(tbx_tbuf_t *tb, size_t pos, tbx_tbuf_var_t *tbv)
+{
+    dio_tbuf_t *tdio = (dio_tbuf_t *)tb->arg;
+    size_t c1, bpos, nbytes;
+
+    c1 = (tdio->lo_extra > 0) ? tdio->page_size : 0;
+
+    if (pos < c1) {  //** We start in the lo buffer
+        nbytes = tdio->page_size - pos;
+        tbv->n_iov = 1;
+        tbv->buffer = &(tbv->priv.single);
+        tbv->priv.single.iov_len = (nbytes > tbv->nbytes) ? tbv->nbytes : nbytes;  //** return just enough bytes to hit the buffer
+        tbv->priv.single.iov_base = tdio->lo_buf + pos;
+        tbv->nbytes = tbv->priv.single.iov_len;
+        return(TBUFFER_OK);
+    } else if ((pos < tdio->hi_pstart) || (tdio->hi_extra == 0)) {  //** Starting in the user tbuf.  If hi_extra==0 then a full final page is hit
+        bpos = tdio->tbuf_bpos + pos - tdio->lo_extra; //** This is the starting position relative to the original tbuf
+        nbytes = tdio->blen - bpos + 1;    //** Max bytes we can transfer
+        if (nbytes > tbv->nbytes) tbv->nbytes = nbytes;  //** Truncate if needed
+        return(tbx_tbuf_next(tdio->tbuf, bpos, tbv));  //** Return the original tbuf
+    } else if ((pos - tdio->hi_pstart) < tdio->page_size) {  //** Starting in the hi buffer
+        bpos = pos - tdio->hi_pstart;
+        nbytes = tdio->page_size - bpos;
+        tbv->n_iov = 1;
+        tbv->buffer = &(tbv->priv.single);
+        tbv->priv.single.iov_len = (nbytes > tbv->nbytes) ? tbv->nbytes : nbytes;  //** return just enough bytes to hit the end
+        tbv->priv.single.iov_base = tdio->hi_buf + bpos;
+        tbv->nbytes = tbv->priv.single.iov_len;
+        return(TBUFFER_OK);
+    }
+
+    return(TBUFFER_OUTOFSPACE);
+}
+
+//*******************************************************************************
+// _dio_read_merge - Handles the partial page buffer overlaps for reads
+//*******************************************************************************
+
+int _dio_read_merge(dio_tbuf_t *tdio)
+{
+    tbx_tbuf_t tb;
+    size_t poff, nbytes;
+    int tb_err = 0;
+
+    if (tdio->lo_extra > 0) { //** Got a low side partial page
+        tbx_tbuf_single(&tb,tdio->page_size, tdio->lo_buf);
+        poff = tdio->lo_extra + tdio->blen;
+        if (poff > tdio->page_size) {
+            tb_err =+ tbx_tbuf_copy(&tb, tdio->lo_extra, tdio->tbuf, tdio->tbuf_bpos, tdio->page_size - tdio->lo_extra, 1);
+        } else {
+            return(tbx_tbuf_copy(&tb, tdio->lo_extra, tdio->tbuf, tdio->tbuf_bpos, tdio->blen, 1));
+        }
+    }
+
+
+    if (tdio->hi_extra > 0) { //** Got a high side partial page
+        tbx_tbuf_single(&tb, tdio->page_size, tdio->hi_buf);
+        nbytes = tdio->lo_extra + tdio->blen - tdio->hi_pstart;
+        poff = tdio->blen - nbytes;
+        tb_err =+ tbx_tbuf_copy(&tb, 0, tdio->tbuf, tdio->tbuf_bpos+poff, nbytes, 1);
+    }
+
+    return(tb_err);
+}
+
+//*******************************************************************************
+// _dio_write_merge - Handles the partial page buffer overlaps for writes
+//*******************************************************************************
+
+int _dio_write_merge(dio_tbuf_t *tdio)
+{
+    tbx_tbuf_t tb;
+    size_t poff, nbytes;
+    int tb_err = 0;
+
+    if (tdio->lo_extra > 0) { //** Got a low side partial page
+        tbx_tbuf_single(&tb,tdio->page_size, tdio->lo_buf);
+        poff = tdio->lo_extra + tdio->blen;
+        if (poff > tdio->page_size) {
+            tb_err =+ tbx_tbuf_copy(tdio->tbuf, tdio->tbuf_bpos, &tb, tdio->lo_extra, tdio->page_size - tdio->lo_extra, 1);
+        } else {
+            return(tbx_tbuf_copy(tdio->tbuf, tdio->tbuf_bpos, &tb, tdio->lo_extra, tdio->blen, 1));
+        }
+    }
+
+
+    if (tdio->hi_extra > 0) { //** Got a high side partial page
+        tbx_tbuf_single(&tb, tdio->page_size, tdio->hi_buf);
+        nbytes = tdio->lo_extra + tdio->blen - tdio->hi_pstart;
+        poff = tdio->blen - nbytes;
+        tb_err =+ tbx_tbuf_copy( tdio->tbuf, tdio->tbuf_bpos+poff, &tb, 0, nbytes, 1);
+    }
+
+    return(tb_err);
+}
+
+//*******************************************************************************
+// cache_direct_rw_op - Bypasses the cache and directly reads pages
+//*******************************************************************************
+
+int cache_direct_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *rw_hints, int rw_mode, ex_off_t lo, ex_off_t hi, ex_off_t len, ex_off_t bpos, tbx_tbuf_t *tbuf, int *tb_err)
+{
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
+    char lo_buf[s->page_size], hi_buf[s->page_size];
+    gop_op_status_t status, status2;
+    ex_tbx_iovec_t ex_iov, lo_ex_iov, hi_ex_iov;
+    dio_tbuf_t tdio;
+    tbx_tbuf_t dbuf, lo_tb, hi_tb;
+    dio_range_lock_t range;
+    tbx_stack_ele_t ele;
+    ex_off_t lo_page, hi_page, total_len, lo_start, hi_start, curr_size;
+    gop_op_generic_t *gop, *gop2;
+
+    tdio.page_size = s->page_size;
+    tdio.tbuf = tbuf; tdio.tbuf_bpos = bpos;  tdio.blen = len;
+    tdio.lo_buf = lo_buf;  tdio.hi_buf = hi_buf;
+    lo_page = (lo / s->page_size); lo_start = lo_page * s->page_size; tdio.lo_extra = lo % s->page_size;
+    hi_page = (hi / s->page_size); hi_start = hi_page * s->page_size; tdio.hi_poff = hi % s->page_size; tdio.hi_extra = s->page_size - tdio.hi_poff - 1;
+    tdio.hi_pstart = hi_start - lo_start;
+    total_len = (hi_page - lo_page + 1) * s->page_size;
+
+    log_printf(10, "sid=" XIDT " lo=" XOT " hi=" XOT " lo_page=" XOT " hi_page=" XOT " rlen=" XOT " alen=" XOT " page_size=" XOT "\n", segment_id(seg), lo, hi, lo_page, hi_page, len, total_len, s->page_size);
+    log_printf(10, "sid=" XIDT " lo_extra=" XOT " hi_extra = " XOT " hi_pstart=" XOT " hi_poff=" XOT "\n", segment_id(seg), tdio.lo_extra, tdio.hi_extra, tdio.hi_pstart, tdio.hi_poff);
+    tbx_tbuf_fn(&dbuf, total_len, &tdio, dio_next_block);
+    ex_iovec_single(&ex_iov, lo_start, total_len);
+
+    //** Fill in my bits about the range for the lock
+    range.lo = lo_page; range.hi = hi_page; range.rw_mode = rw_mode;
+    ele.data = &range;
+
+    //** Grow things if needed
+    if (rw_mode == CACHE_WRITE) {
+        segment_lock(seg);
+        if (s->total_size < (hi+1)) {
+            s->total_size = hi + 1;
+            gop_sync_exec(lio_segment_truncate(s->child_seg, da, hi+1, s->c->timeout));
+        }
+        segment_unlock(seg);
+    }
+
+    dio_range_lock(seg, &range, &ele);
+
+    if (rw_mode == CACHE_READ) {  //** Performaing a read operation
+        status = gop_sync_exec_status(segment_read(s->child_seg, da, rw_hints, 1, &ex_iov, &dbuf, 0, s->c->timeout));
+        if (_dio_read_merge(&tdio) > 0) status = gop_failure_status;
+    } else { //Got a write operation
+        //** Need to preload the partial pages
+        gop = gop2 = NULL;
+        status = gop_success_status;
+
+        segment_lock(seg);
+        curr_size = s->total_size;
+        segment_unlock(seg);
+
+        if (lo_page != hi_page) {  //** Big I/O
+            if (curr_size < lo_start) {
+                memset(lo_buf, 0, s->page_size);
+            } else if (tdio.lo_extra > 0) { //** Need to prefetch the page
+                ex_iovec_single(&lo_ex_iov, lo_start, s->page_size);
+                tbx_tbuf_single(&lo_tb, s->page_size, lo_buf);
+                gop = segment_read(s->child_seg, da, rw_hints, 1, &lo_ex_iov, &lo_tb, 0, s->c->timeout);
+                gop_start_execution(gop);
+            }
+
+            if (curr_size < hi_start) {
+                memset(hi_buf, 0, s->page_size);
+            } else if (tdio.hi_extra > 0) { //** Need to prefetch the page
+                ex_iovec_single(&hi_ex_iov, hi_start, s->page_size);
+                tbx_tbuf_single(&hi_tb, s->page_size, hi_buf);
+                gop2 = segment_read(s->child_seg, da, rw_hints, 1, &hi_ex_iov, &hi_tb, 0, s->c->timeout);
+                gop_start_execution(gop2);
+            }
+        } else {  //** Small same page I/O
+            tdio.hi_buf = lo_buf;
+
+            if (curr_size == 0) {
+                memset(lo_buf, 0, s->page_size);
+            } else if ((tdio.lo_extra != 0) || (tdio.hi_extra != 0)) { //** Need to prefetch the page
+                ex_iovec_single(&lo_ex_iov, lo_start, s->page_size);
+                tbx_tbuf_single(&lo_tb, s->page_size, lo_buf);
+                gop = segment_read(s->child_seg, da, rw_hints, 1, &lo_ex_iov, &lo_tb, 0, s->c->timeout);
+                gop_start_execution(gop);
+            }
+        }
+
+        //** Wait for the prefetch to complete
+        if (gop) {
+            gop_waitall(gop);
+            status2 = gop_get_status(gop);
+            gop_free(gop, OP_DESTROY);
+            if (status2.op_status != OP_STATE_SUCCESS) status = status2;
+        }
+        if (gop2) {
+            gop_waitall(gop2);
+            status2 = gop_get_status(gop2);
+            gop_free(gop2, OP_DESTROY);
+            if (status2.op_status != OP_STATE_SUCCESS) status = status2;
+        }
+        if (status.op_status != OP_STATE_SUCCESS) goto fail;  //** Kick out
+
+        if (_dio_write_merge(&tdio) > 0) return(1);
+
+       //** Now we have everything and can do the actual write
+        status = gop_sync_exec_status(segment_write(s->child_seg, da, rw_hints, 1, &ex_iov, &dbuf, 0, s->c->timeout));
+
+        if (curr_size < (hi+1)) {
+            segment_lock(seg);
+            if (s->total_size < (hi+1)) s->total_size = hi + 1;
+            segment_unlock(seg);
+        }
+    }
+fail:
+    dio_range_unlock(seg, &range, &ele);
+
+    return((status.op_status == OP_STATE_SUCCESS) ? 0 : 1);
+}
+
+
+
+//*******************************************************************************
+// cache_direct_rw_func - Function for reading/writing and bypass the cache
+//*******************************************************************************
+
+gop_op_status_t cache_direct_rw_func(void *arg, int id)
+{
+    cache_rw_op_t *cop = (cache_rw_op_t *)arg;
+    lio_segment_t *seg = cop->seg;
+    gop_op_status_t status;
+    int i, err, tb_err;
+
+    tb_err = err = 0;
+    for (i=0; i<cop->n_iov; i++) {
+        err += cache_direct_rw_op(seg, cop->da, cop->rw_hints, cop->rw_mode, cop->iov[i].offset, cop->iov[i].offset+cop->iov[i].len-1, cop->iov[i].len, cop->boff, cop->buf, &tb_err);
+    }
+
+    status = (tb_err+err) == 0 ? gop_success_status : gop_failure_status;
+    return(status);
+}
 
 //*************************************************************
 // cache_cond_new - Creates a new shelf of cond variables
@@ -387,6 +881,7 @@ int cache_rw_direct(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t 
 
     return((status.op_status == OP_STATE_SUCCESS) ? 0 : 1);
 }
+
 
 //*******************************************************************************
 //  cache_rw_pages - Reads or Writes pages on the given segment.  Optionally releases the pages
@@ -969,7 +1464,10 @@ int cache_page_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi)
 
 int lio_segment_cache_pages_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi)
 {
+    lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
+
     if (strcmp(seg->header.type, SEGMENT_TYPE_CACHE) != 0) return(0);
+    if (s->direct_io == 1) return(0);
 
     return(cache_page_drop(seg, lo, hi));
 }
@@ -2658,6 +3156,8 @@ gop_op_generic_t *cache_read(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
     cop->boff = boff;
     cop->buf = buffer;
 
+    if (s->direct_io == 1) return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_direct_rw_func, (void *)cop, free, 1));
+
     return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
 }
 
@@ -2680,6 +3180,8 @@ gop_op_generic_t *cache_write(lio_segment_t *seg, data_attr_t *da, lio_segment_r
     cop->rw_mode = CACHE_WRITE;
     cop->boff = boff;
     cop->buf = buffer;
+
+    if (s->direct_io == 1) return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_direct_rw_func, (void *)cop, free, 1));
 
     return(gop_tp_op_new(s->tpc_unlimited, s->qname, cache_rw_func, (void *)cop, free, 1));
 }
@@ -2827,6 +3329,8 @@ gop_op_generic_t *cache_flush_range_gop(lio_segment_t *seg, data_attr_t *da, ex_
 {
     cache_rw_op_t *cop;
     lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
+
+    if (s->direct_io) return(gop_dummy(gop_success_status));  //** If directI/O there's nothing to do
 
     tbx_type_malloc(cop, cache_rw_op_t, 1);
     cop->seg = seg;
@@ -2997,7 +3501,7 @@ gop_op_generic_t *segcache_inspect(lio_segment_t *seg, data_attr_t *da, tbx_log_
 // lio_cache_truncate_func - Function for truncating cache pages and actual segment
 //*******************************************************************************
 
-gop_op_status_t seglio_cache_truncate_func(void *arg, int id)
+gop_op_status_t segcache_truncate_func(void *arg, int id)
 {
     lio_cache_truncate_op_t *cop = (lio_cache_truncate_op_t *)arg;
     lio_cache_segment_t *s = (lio_cache_segment_t *)cop->seg->priv;
@@ -3008,7 +3512,7 @@ gop_op_status_t seglio_cache_truncate_func(void *arg, int id)
 
     //** Adjust the size
     cache_lock(s->c);
-    _cache_ppages_flush(cop->seg, cop->da); //** Flush any partial pages first
+    if (s->direct_io == 0) _cache_ppages_flush(cop->seg, cop->da); //** Flush any partial pages first
 
     segment_lock(cop->seg);
     old_size = s->total_size;
@@ -3016,28 +3520,31 @@ gop_op_status_t seglio_cache_truncate_func(void *arg, int id)
     segment_unlock(cop->seg);
     cache_unlock(s->c);
 
-    //** If shrinking the file need to destroy excess cache pages
-    if (cop->new_size < old_size) {
-        log_printf(5, "seg=" XIDT " dropping extra pages. inprogress=%d old=" XOT " new=" XOT "\n", segment_id(cop->seg), s->cache_check_in_progress, old_size, cop->new_size);
-        //** Got to check if a dirty thread is trying to do an empty flush or a prefetch is running
-        cache_lock(s->c);
-        while (s->cache_check_in_progress != 0) {
-            cache_unlock(s->c);
-            log_printf(5, "seg=" XIDT " waiting for dirty flush/prefetch to complete. inprogress=%d\n", segment_id(cop->seg), s->cache_check_in_progress);
-            usleep(10000);
+    err1 = OP_STATE_SUCCESS;
+    if (s->direct_io == 0) {  //** IF not using direct I/O need to let things clear first
+        //** If shrinking the file need to destroy excess cache pages
+        if (cop->new_size < old_size) {
+            log_printf(5, "seg=" XIDT " dropping extra pages. inprogress=%d old=" XOT " new=" XOT "\n", segment_id(cop->seg), s->cache_check_in_progress, old_size, cop->new_size);
+            //** Got to check if a dirty thread is trying to do an empty flush or a prefetch is running
             cache_lock(s->c);
+            while (s->cache_check_in_progress != 0) {
+                cache_unlock(s->c);
+                log_printf(5, "seg=" XIDT " waiting for dirty flush/prefetch to complete. inprogress=%d\n", segment_id(cop->seg), s->cache_check_in_progress);
+                usleep(10000);
+                cache_lock(s->c);
+            }
+            cache_unlock(s->c);
+
+            log_printf(5, "dropping extra pages. NOW\n");
+            cache_page_drop(cop->seg, cop->new_size, XOT_MAX);
+            log_printf(5, "dropping extra pages. FINISHED\n");
         }
-        cache_unlock(s->c);
 
-        log_printf(5, "dropping extra pages. NOW\n");
-        cache_page_drop(cop->seg, cop->new_size, XOT_MAX);
-        log_printf(5, "dropping extra pages. FINISHED\n");
+        //** Do a cache flush
+        gop = segment_flush(cop->seg, cop->da, 0, cop->new_size, cop->timeout);
+        err1 = gop_waitall(gop);
+        gop_free(gop, OP_DESTROY);
     }
-
-    //** Do a cache flush
-    gop = segment_flush(cop->seg, cop->da, 0, cop->new_size, cop->timeout);
-    err1 = gop_waitall(gop);
-    gop_free(gop, OP_DESTROY);
 
     //** Perform the truncate on the underlying segment
     gop = lio_segment_truncate(s->child_seg, cop->da, cop->new_size, cop->timeout);
@@ -3060,11 +3567,11 @@ gop_op_status_t seglio_cache_truncate_func(void *arg, int id)
 }
 
 //***********************************************************************
-// seglio_cache_truncate - Truncates the underlying segment and flushes
+// segcache_truncate - Truncates the underlying segment and flushes
 //     cache as needed.
 //***********************************************************************
 
-gop_op_generic_t *seglio_cache_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
+gop_op_generic_t *segcache_truncate(lio_segment_t *seg, data_attr_t *da, ex_off_t new_size, int timeout)
 {
     lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
     lio_cache_truncate_op_t *cop;
@@ -3082,7 +3589,7 @@ gop_op_generic_t *seglio_cache_truncate(lio_segment_t *seg, data_attr_t *da, ex_
     cop->new_size = new_size;
     cop->timeout = timeout;
 
-    gop = gop_tp_op_new(s->tpc_unlimited, NULL, seglio_cache_truncate_func, (void *)cop, free, 1);
+    gop = gop_tp_op_new(s->tpc_unlimited, NULL, segcache_truncate_func, (void *)cop, free, 1);
 
 
     return(gop);
@@ -3197,7 +3704,7 @@ gop_op_generic_t *segcache_remove(lio_segment_t *seg, data_attr_t *da, int timeo
 {
     lio_cache_segment_t *s = (lio_cache_segment_t *)seg->priv;
 
-    cache_page_drop(seg, 0, s->total_size + 1);
+    if (s->direct_io == 0) cache_page_drop(seg, 0, s->total_size + 1);
     return(segment_remove(s->child_seg, da, timeout));
 }
 
@@ -3312,7 +3819,7 @@ int segcache_deserialize_text(lio_segment_t *seg, ex_id_t myid, lio_exnode_excha
     }
 
     //** Remove my random ID from the segments table
-    if (s->c) {
+    if ((s->c) && (s->direct_io == 0)) {
         cache_lock(s->c);
         log_printf(5, "CSEG-I Removing seg=" XIDT " nsegs=%d myid=" XIDT "\n", segment_id(seg), tbx_list_key_count(s->c->segments), myid);
         tbx_log_flush();
@@ -3352,6 +3859,8 @@ int segcache_deserialize_text(lio_segment_t *seg, ex_id_t myid, lio_exnode_excha
         s->child_last_page = -1;  //** No pages
     }
     log_printf(5, "seg=" XIDT " Initial child_last_page=" XOT " child_size=" XOT " page_size=" XOT "\n", segment_id(seg), s->child_last_page, child_size, s->page_size);
+
+    if (s->direct_io == 1) return(0);  //** Nothing else to do for direct I/O
 
     //** Make the partial pages table
     s->n_ppages = (s->c != NULL) ? s->c->n_ppages : 0;
@@ -3424,7 +3933,7 @@ void segcache_destroy(tbx_ref_t *ref)
 
     //** If s->c == NULL then we are just cloning the structure or serial/deserializing an exnode
     //** There should be no data loaded
-    if (s->c != NULL) {
+    if ((s->c != NULL) && (s->direct_io == 0)) {
         //** Flush any ppages
         cache_lock(s->c);
         if (s->c != NULL) _cache_ppages_flush(seg, s->c->da);
@@ -3471,6 +3980,8 @@ void segcache_destroy(tbx_ref_t *ref)
         cache_unlock(s->c);
     }
 
+    if (s->direct_io) goto finished;  //** Skip all of this since we're using direct IO
+
     //** Drop the flush args
     apr_thread_cond_destroy(s->flush_cond);
     tbx_stack_free(s->flush_stack, 0);
@@ -3483,11 +3994,6 @@ void segcache_destroy(tbx_ref_t *ref)
     tbx_list_destroy(s->pages);
     tbx_list_destroy(s->partial_pages);
 
-    //** Destroy the child segment as well
-    if (s->child_seg != NULL) {
-        tbx_obj_put(&s->child_seg->obj);
-    }
-
     //** and finally the misc stuff
     if (s->n_ppages > 0) {
         for (i=0; i<s->n_ppages; i++) {
@@ -3498,10 +4004,19 @@ void segcache_destroy(tbx_ref_t *ref)
     }
 
     tbx_stack_free(s->ppages_unused, 0);
+    apr_thread_cond_destroy(s->ppages_cond);
+
+finished:
+    //** Destroy the child segment as well
+    if (s->child_seg != NULL) {
+        tbx_obj_put(&s->child_seg->obj);
+    }
+
+    if (s->dio_pending) tbx_stack_free(s->dio_pending, 0);
+    if (s->dio_execing) tbx_stack_free(s->dio_execing, 0);
 
     apr_thread_mutex_destroy(seg->lock);
     apr_thread_cond_destroy(seg->cond);
-    apr_thread_cond_destroy(s->ppages_cond);
     apr_pool_destroy(seg->mpool);
 
     free(s->qname);
@@ -3530,24 +4045,6 @@ lio_segment_t *segment_cache_create(void *arg)
     assert_result(apr_pool_create(&(seg->mpool), NULL), APR_SUCCESS);
     apr_thread_mutex_create(&(seg->lock), APR_THREAD_MUTEX_DEFAULT, seg->mpool);
     apr_thread_cond_create(&(seg->cond), seg->mpool);
-    apr_thread_cond_create(&(s->flush_cond), seg->mpool);
-    apr_thread_cond_create(&(s->ppages_cond), seg->mpool);
-
-    s->flush_stack = tbx_stack_new();
-    s->tpc_unlimited = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_CACHE);
-    FATAL_UNLESS(s->tpc_unlimited != NULL);
-
-    s->pages = tbx_list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
-
-    s->ppages_unused = tbx_stack_new();
-    s->partial_pages = tbx_list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
-
-    s->c = lio_lookup_service(es, ESS_RUNNING, ESS_CACHE);
-    if (s->c != NULL) s->c = cache_get_handle(s->c);
-    s->page_size = 64*1024;
-    s->n_ppages = 0;
-
-    log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
 
     generate_ex_id(&(seg->header.id));
     seg->header.type = SEGMENT_TYPE_CACHE;
@@ -3557,6 +4054,38 @@ lio_segment_t *segment_cache_create(void *arg)
 
     seg->ess = es;
     seg->priv = s;
+
+    s->c = lio_lookup_service(es, ESS_RUNNING, ESS_CACHE);
+    if (s->c != NULL) {
+        s->c = cache_get_handle(s->c);
+        if (strcmp(s->c->type, CACHE_TYPE_DIRECT) == 0) s->direct_io = 1;
+    }
+
+    log_printf(2, "CACHE-PTR seg=" XIDT " s->c=%p\n", segment_id(seg), s->c);
+
+    s->page_size = 64*1024;
+
+    s->tpc_unlimited = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_CACHE);
+    FATAL_UNLESS(s->tpc_unlimited != NULL);
+
+    if (s->direct_io == 1) { //** Direct I/O so make those bits and skip to the end
+        s->dio_pending = tbx_stack_new();
+        s->dio_execing = tbx_stack_new();
+        return(seg);
+    }
+
+    apr_thread_cond_create(&(s->flush_cond), seg->mpool);
+    apr_thread_cond_create(&(s->ppages_cond), seg->mpool);
+
+    s->flush_stack = tbx_stack_new();
+
+    s->pages = tbx_list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
+
+    s->ppages_unused = tbx_stack_new();
+    s->partial_pages = tbx_list_create(0, &skiplist_compare_ex_off, NULL, NULL, NULL);
+
+    s->n_ppages = 0;
+
     if (s->c != NULL) { //** If no cache backend skip this  only used for temporary deseril/serial
         cache_lock(s->c);
         CACHE_PRINT;
@@ -3584,13 +4113,14 @@ lio_segment_t *segment_cache_load(void *arg, ex_id_t id, lio_exnode_exchange_t *
     return(seg);
 }
 
+//** This is the vtable when using actual cache
 const lio_segment_vtable_t lio_cacheseg_vtable = {
         .base.name = "segment_cache",
         .base.free_fn = segcache_destroy,
         .read = cache_read,
         .write = cache_write,
         .inspect = segcache_inspect,
-        .truncate = seglio_cache_truncate,
+        .truncate = segcache_truncate,
         .remove = segcache_remove,
         .flush = cache_flush_range_gop,
         .clone = segcache_clone,
@@ -3600,4 +4130,3 @@ const lio_segment_vtable_t lio_cacheseg_vtable = {
         .serialize = segcache_serialize,
         .deserialize = segcache_deserialize,
 };
-
