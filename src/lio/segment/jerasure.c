@@ -76,6 +76,7 @@ typedef struct {
     gop_thread_pool_context_t *tpc;
     lio_blacklist_t *blacklist;
     ex_off_t max_parity;
+    ex_off_t max_parity_on_stack;
     int write_errors;
     int soft_errors;
     int hard_errors;
@@ -1258,7 +1259,16 @@ gop_op_status_t segjerase_read_func(void *arg, int id)
     gop_op_status_t status, op_status, check_status;
     ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
     int i, j, k, m, stripe, magic_used, slot, n_iov, nstripes, curr_stripe, iov_start, magic_stripe, magic_off, quick;
-    char *parity, *magic, *ptr[s->n_devs], *eptr[s->n_devs];
+
+    //** These are made on the stack instead of mallocing
+    char magic[JE_MAGIC_SIZE*s->n_devs*sw->nstripes];
+    ex_tbx_iovec_t ex_iov[sw->n_iov];
+    tbx_iovec_t iov[2*sw->nstripes*s->n_devs];
+    tbx_tbuf_t tbuf[sw->n_iov];
+    lio_segment_rw_hints_t rw_hints[sw->n_iov];
+    segjerase_io_t info[sw->n_iov];
+
+    char *parity, *ptr[s->n_devs], *eptr[s->n_devs];
     char pbuff[s->n_parity_devs*s->chunk_size];
     char *pwork[s->n_parity_devs];
     char magic_key[s->n_devs*JE_MAGIC_SIZE], empty_magic[JE_MAGIC_SIZE], *stripe_magic;
@@ -1272,11 +1282,6 @@ gop_op_status_t segjerase_read_func(void *arg, int id)
     tbx_tbuf_t straddle_tbuf;
     gop_opque_t *q;
     gop_op_generic_t *gop;
-    ex_tbx_iovec_t *ex_iov;
-    tbx_tbuf_t *tbuf;
-    lio_segment_rw_hints_t *rw_hints;
-    tbx_iovec_t *iov;
-    segjerase_io_t *info;
     tbx_tbuf_var_t tbv;
     int loop;
 
@@ -1289,22 +1294,6 @@ gop_op_status_t segjerase_read_func(void *arg, int id)
     nstripes = INT_MIN;
     len = INT_MIN;
     lo = INT_MIN;
-
-tryagain:  //** We first try allowing blacklisting to proceed as normal and then start over if that fails
-
-    q = gop_opque_new();
-    tbx_tbuf_var_init(&tbv);
-    magic_stripe = JE_MAGIC_SIZE*s->n_devs;
-    status = gop_success_status;
-    soft_error = 0;
-    hard_error = 0;
-    bm_brute_used = 0;
-
-    straddle_buffer = NULL;
-    straddle_offset = NULL;
-    straddle_ptr = NULL;
-    straddle_size = -1;
-    straddle_used = -1;
 
     //** Make the space for the parity
     parity_len = sw->nstripes * s->parity_size;
@@ -1321,14 +1310,32 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
             log_printf(1, "seg=" XIDT " Parity to small.  Growing to parity_len=" XOT " s->max_parity=" XOT "\n", segment_id(sw->seg), parity_len, s->max_parity);
         }
     }
-    tbx_type_malloc(parity, char, parity_len);
 
-    tbx_type_malloc_clear(magic, char, magic_stripe*sw->nstripes);
-    tbx_type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
-    tbx_type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
-    tbx_type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
-    tbx_type_malloc_clear(rw_hints, lio_segment_rw_hints_t, sw->n_iov);
-    tbx_type_malloc(info, segjerase_io_t, sw->n_iov);
+    //** See if we can store the parity on the stack
+    char parity_ptr[(parity_len > s->max_parity_on_stack) ? 1 : parity_len];
+    if (parity_len > s->max_parity_on_stack) {
+        log_printf(1, "seg=" XIDT " PARITY location: MALLOC... parity_len=" XOT " s->max_parity_on_stack=" XOT "\n", segment_id(sw->seg), parity_len, s->max_parity_on_stack);
+        tbx_type_malloc(parity, char, parity_len);
+    } else {
+        log_printf(1, "seg=" XIDT " PARITY location: STACK... parity_len=" XOT " s->max_parity_on_stack=" XOT "\n", segment_id(sw->seg), parity_len, s->max_parity_on_stack);
+        parity = parity_ptr;
+    }
+
+tryagain:  //** We first try allowing blacklisting to proceed as normal and then start over if that fails
+
+    q = gop_opque_new();
+    tbx_tbuf_var_init(&tbv);
+    magic_stripe = JE_MAGIC_SIZE*s->n_devs;
+    status = gop_success_status;
+    soft_error = 0;
+    hard_error = 0;
+    bm_brute_used = 0;
+
+    straddle_buffer = NULL;
+    straddle_offset = NULL;
+    straddle_ptr = NULL;
+    straddle_size = -1;
+    straddle_used = -1;
 
     //** Set up the blacklist structure
     if (sw->rw_hints == NULL) {
@@ -1531,16 +1538,16 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
                 quick = 1;
-                if ((tbv.n_iov != 1) || ((int)tbv.nbytes != s->data_size)) {
+                if ((tbv.n_iov != 1) || ((int)tbv.nbytes < s->data_size)) {
                     quick = 0;
                     log_printf(0, "OOPS n_iov=%d nbytes=%d boff=" XOT " iov=%d\n", tbv.n_iov, (int)tbv.nbytes, boff, i);
+                    straddle_used++;
                     if (straddle_used >= straddle_size) {
                         straddle_size = 2*straddle_size + 10;
                         straddle_offset = realloc(straddle_offset, sizeof(ex_off_t) * straddle_size);
                         straddle_buffer = realloc(straddle_buffer, sizeof(char *) * straddle_size);
                     }
 
-                    straddle_used++;
                     tbx_type_malloc(straddle_ptr, char, s->data_size);
                     straddle_buffer[straddle_used] = straddle_ptr;
                     straddle_offset[straddle_used] = boff;
@@ -1597,13 +1604,7 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
 
 
     //** Clean up
-    free(parity);
-    free(magic);
-    free(ex_iov);
-    free(iov);
-    free(tbuf);
-    free(rw_hints);
-    free(info);
+    if (parity_len > s->max_parity_on_stack) free(parity);
 
     if (straddle_size > 0) {
         for (i=0; i<(straddle_used+1); i++) free(straddle_buffer[i]);
@@ -1641,6 +1642,15 @@ gop_op_status_t segjerase_write_func(void *arg, int id)
 {
     segjerase_rw_t *sw = (segjerase_rw_t *)arg;
     segjerase_priv_t *s = (segjerase_priv_t *)sw->seg->priv;
+
+    //** These are made on the stack instead of mallocing
+    char magic[JE_MAGIC_SIZE*s->n_devs*sw->nstripes];
+    char *ptr[sw->nstripes*s->n_devs];
+    ex_tbx_iovec_t ex_iov[sw->n_iov];
+    tbx_iovec_t iov[2*sw->nstripes*s->n_devs];
+    tbx_tbuf_t tbuf[sw->n_iov];
+    lio_segment_rw_hints_t rw_hints[sw->n_iov];
+
     gop_op_status_t status, op_status;
     ex_off_t lo, boff, poff, len, parity_len, parity_used, curr_bytes;
     int i, j, k, n_iov, nstripes, curr_stripe, pstripe, iov_start, quick;
@@ -1649,13 +1659,9 @@ gop_op_status_t segjerase_write_func(void *arg, int id)
     ex_off_t *straddle_offset;
     int straddle_size, straddle_used;
     tbx_tbuf_t straddle_tbuf;
-    char *parity, *magic, **ptr, *stripe_magic, *empty;
+    char *parity,  *stripe_magic, *empty;
     gop_opque_t *q;
     gop_op_generic_t *gop;
-    ex_tbx_iovec_t *ex_iov;
-    tbx_tbuf_t *tbuf;
-    tbx_iovec_t *iov;
-    lio_segment_rw_hints_t *rw_hints;
     tbx_tbuf_var_t tbv;
     int loop;
     loop = 0;
@@ -1664,20 +1670,6 @@ gop_op_status_t segjerase_write_func(void *arg, int id)
     nstripes = INT_MIN;
     len = INT_MIN;
     lo = INT_MIN;
-
-tryagain: //** In case blacklisting failed we'll retry with it disabled
-
-    q = gop_opque_new();
-    tbx_tbuf_var_init(&tbv);
-    status = gop_success_status;
-    soft_error = 0;
-    hard_error = 0;
-
-    straddle_buffer = NULL;
-    straddle_offset = NULL;
-    straddle_ptr = NULL;
-    straddle_size = -1;
-    straddle_used = -1;
 
     //** Make the space for the parity
     parity_len = sw->nstripes * s->parity_size;
@@ -1694,16 +1686,32 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
             log_printf(1, "Parity to small.  Growing to parity_len=" XOT " s->max_parity=" XOT "\n", parity_len, s->max_parity);
         }
     }
-    tbx_type_malloc(parity, char, parity_len + s->chunk_size);
+
+    //** See if we can store the parity on the stack
+    char parity_ptr[(parity_len > s->max_parity_on_stack) ? 1 : parity_len];
+    if (parity_len > s->max_parity_on_stack) {
+        log_printf(1, "seg=" XIDT " PARITY location: MALLOC... parity_len=" XOT " s->max_parity_on_stack=" XOT "\n", segment_id(sw->seg), parity_len, s->max_parity_on_stack);
+        tbx_type_malloc(parity, char, parity_len);
+    } else {
+        log_printf(1, "seg=" XIDT " PARITY location: STACK... parity_len=" XOT " s->max_parity_on_stack=" XOT "\n", segment_id(sw->seg), parity_len, s->max_parity_on_stack);
+        parity = parity_ptr;
+    }
+
+tryagain: //** In case blacklisting failed we'll retry with it disabled
+
+    q = gop_opque_new();
+    tbx_tbuf_var_init(&tbv);
+    status = gop_success_status;
+    soft_error = 0;
+    hard_error = 0;
+
+    straddle_buffer = NULL;
+    straddle_offset = NULL;
+    straddle_ptr = NULL;
+    straddle_size = -1;
+    straddle_used = -1;
+
     empty = NULL;
-
-    tbx_type_malloc_clear(magic, char, JE_MAGIC_SIZE*sw->nstripes);
-    tbx_type_malloc(ptr, char *, sw->nstripes*s->n_devs);
-    tbx_type_malloc(ex_iov, ex_tbx_iovec_t, sw->n_iov);
-    tbx_type_malloc(iov, tbx_iovec_t, 2*sw->nstripes*s->n_devs);
-    tbx_type_malloc(tbuf, tbx_tbuf_t, sw->n_iov);
-    tbx_type_malloc_clear(rw_hints, lio_segment_rw_hints_t, sw->n_iov);
-
 
     //** Set up the blacklist structure
     if (sw->rw_hints == NULL) {
@@ -1776,21 +1784,24 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
                 tbv.nbytes = s->data_size;
                 tbx_tbuf_next(sw->buffer, boff, &tbv);
                 quick = 1;
-                if ((tbv.n_iov != 1) || ((int)tbv.nbytes != s->data_size)) {
-                    log_printf(0, "OOPS n_iov=%d nbytes=%d boff=" XOT " iov=%d\n", tbv.n_iov, (int)tbv.nbytes, boff, i);
+                if ((tbv.n_iov != 1) || ((int)tbv.nbytes < s->data_size)) {
+                    quick = 0;
+                    log_printf(0, "OOPS n_iov=%d nbytes=%d boff=" XOT " iov=%d straddle_size=%d straddle_used=%d\n", tbv.n_iov, (int)tbv.nbytes, boff, i, straddle_size, straddle_used);
+                    tbx_log_flush();
+                    straddle_used++;
                     if (straddle_used >= straddle_size) {
                         straddle_size = 2*straddle_size + 10;
                         straddle_offset = realloc(straddle_offset, sizeof(ex_off_t) * straddle_size);
                         straddle_buffer = realloc(straddle_buffer, sizeof(char *) * straddle_size);
                     }
 
-                    straddle_used++;
                     tbx_type_malloc(straddle_ptr, char, s->data_size);
                     straddle_buffer[straddle_used] = straddle_ptr;
                     straddle_offset[straddle_used] = boff;
                     tbx_tbuf_single(&straddle_tbuf, s->data_size, straddle_ptr);
                     tbx_tbuf_copy(sw->buffer, boff, &straddle_tbuf, 0, s->data_size, 1);
-                    log_printf(0, "OOPS STRADDLE used=%d boff=" XOT "\n", straddle_used, straddle_offset[straddle_used]);
+                    log_printf(0, "OOPS STRADDLE used=%d size=%d boff=" XOT "\n", straddle_used, straddle_size, straddle_offset[straddle_used]);
+                    tbx_log_flush();
                 }
 
                 //** Make the encoding and transfer data structs
@@ -1855,13 +1866,7 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
 
 
     //** Clean up
-    free(parity);
-    free(magic);
-    free(ptr);
-    free(ex_iov);
-    free(iov);
-    free(tbuf);
-    free(rw_hints);
+    if (parity_len > s->max_parity_on_stack) free(parity);
 
     if (straddle_size > 0) {
         for (i=0; i<(straddle_used+1); i++) free(straddle_buffer[i]);
@@ -2311,6 +2316,7 @@ lio_segment_t *segment_jerasure_create(void *arg)
     segjerase_priv_t *s;
     lio_segment_t *seg;
     int *paranoid;
+    ex_off_t *max_stack_parity;
 
     //** Make the space
     tbx_type_malloc_clear(seg, lio_segment_t, 1);
@@ -2329,9 +2335,11 @@ lio_segment_t *segment_jerasure_create(void *arg)
     s->tpc = lio_lookup_service(es, ESS_RUNNING, ESS_TPC_UNLIMITED);
     s->child_seg = NULL;
 
-    //** Pluck the paranoid setting for Jerase
+    //** Pluck the paranoid max parity stack size setting for Jerase
     paranoid = lio_lookup_service(es, ESS_RUNNING, "jerase_paranoid");
     s->paranoid_check = (paranoid == NULL) ? 0 : *paranoid;
+    max_stack_parity = lio_lookup_service(es, ESS_RUNNING, "jerase_max_parity_on_stack");
+    s->max_parity_on_stack = (max_stack_parity == NULL) ? 1024*1024 : *max_stack_parity;
     s->magic_cksum = 1;
 
     //** Also snag whether we're blacklisting

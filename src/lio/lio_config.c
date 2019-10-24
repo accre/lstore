@@ -83,6 +83,7 @@ lio_config_t lio_default_options = {
     .readahead = 0,
     .readahead_trigger = 0,
     .jerase_paranoid = 0,
+    .jerase_max_parity_on_stack = 2*1024*1024,
     .tpc_unlimited_count = 300,
     .tpc_max_recursion = 10,
     .tpc_cache_count = 100,
@@ -174,6 +175,7 @@ void lio_print_running_config(FILE *fd, lio_config_t *lio)
     fprintf(fd, "readahead = %s\n", tbx_stk_pretty_print_int_with_scale(lio->readahead, text));
     fprintf(fd, "readahead_trigger = %s\n", tbx_stk_pretty_print_int_with_scale(lio->readahead_trigger, text));
     fprintf(fd, "jerase_paranoid = %d\n", lio->jerase_paranoid);
+    fprintf(fd, "jerase_max_parity_on_stack = %s\n", tbx_stk_pretty_print_int_with_scale(lio->jerase_max_parity_on_stack, text));
     fprintf(fd, "tpc_unlimited = %d\n", lio->tpc_unlimited_count);
     fprintf(fd, "tpc_max_recursion = %d\n", lio->tpc_max_recursion);
     fprintf(fd, "tpc_cache = %d\n", lio->tpc_cache_count);
@@ -982,6 +984,9 @@ void lio_destroy_nl(lio_config_t *lio)
     void *val = lio_lookup_service(lio->ess, ESS_RUNNING, "jerase_paranoid");
     remove_service(lio->ess, ESS_RUNNING, "jerase_paranoid");
     if (val) free(val);
+    val = lio_lookup_service(lio->ess, ESS_RUNNING, "jerase_max_parity_on_stack");
+    remove_service(lio->ess, ESS_RUNNING, "jerase_max_parity_on_stack");
+    if (val) free(val);
 
     _lio_destroy_plugins(lio);
 
@@ -1047,6 +1052,7 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
     lio_path_tuple_t *tuple;
     gop_mq_ongoing_t *on = NULL;
     int *val;
+    ex_off_t *eval;
 
     //** Add the LC first cause it may already exist
     log_printf(1, "START: Creating LIO context %s\n", obj_name);
@@ -1091,11 +1097,15 @@ lio_config_t *lio_create_nl(tbx_inip_file_t *ifd, char *section, char *user, cha
         add_service(lio->ess, ESS_RUNNING, "blacklist", lio->blacklist);
     }
 
-    //** Add the Jerase paranoid option
-    tbx_type_malloc(val, int, 1);  //** NOTE: this is not freed on a destroy
+    //** Add the Jerase paranoid and parity stack options
+    tbx_type_malloc(val, int, 1);
     *val = tbx_inip_get_integer(lio->ifd, section, "jerase_paranoid", lio_default_options.jerase_paranoid);
     add_service(lio->ess, ESS_RUNNING, "jerase_paranoid", val);
     lio->jerase_paranoid = *val;
+    tbx_type_malloc(eval, ex_off_t, 1);
+    *eval = tbx_inip_get_integer(lio->ifd, section, "jerase_max_parity_on_stack", lio_default_options.jerase_max_parity_on_stack);
+    add_service(lio->ess, ESS_RUNNING, "jerase_max_parity_on_stack", eval);
+    lio->jerase_max_parity_on_stack = *eval;
 
     cores = tbx_inip_get_integer(lio->ifd, section, "tpc_unlimited", lio_default_options.tpc_unlimited_count);
     lio->tpc_unlimited_count = cores;

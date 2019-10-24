@@ -1461,13 +1461,20 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
     gop_op_status_t status;
     gop_op_status_t blacklist_status = {OP_STATE_FAILURE, -1234};
     gop_opque_t *q;
-    seglun_row_t *b, **bused;
+
+    //** For small I/O we use the stack
+    int isl_size = 100;
+    seglun_row_t *bused_ptr[isl_size];
+    lun_rw_row_t rwb_table_ptr[isl_size];
+    seglun_row_t **bused = bused_ptr;
+    lun_rw_row_t *rwb_table = rwb_table_ptr;
+
+    seglun_row_t *b;
     tbx_isl_iter_t it;
     ex_off_t lo, hi, start, end, blen, bpos;
     int i, j, maxerr, nerr, slot, n_bslots, bl_count, dev, bl_rid;
-    int *bcount;
     tbx_stack_t *stack;
-    lun_rw_row_t *rw_buf, *rwb_table;
+    lun_rw_row_t *rw_buf;
     double dt;
     apr_time_t exec_time;
     apr_time_t tstart, tstart2;
@@ -1507,10 +1514,6 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
 
     s->inprogress_count++;  //** Flag that we are doing an I/O op
 
-    tbx_type_malloc(bused, seglun_row_t *, tbx_isl_count(s->isl));
-    tbx_type_malloc(bcount, int, s->n_devices * tbx_isl_count(s->isl));
-    tbx_type_malloc(rwb_table, lun_rw_row_t, s->n_devices * tbx_isl_count(s->isl));
-
     q = gop_opque_new();
     stack = tbx_stack_new();
     bpos = boff;
@@ -1540,6 +1543,19 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
                 b->rwop_index = n_bslots;
                 n_bslots++;
                 j = b->rwop_index * s->n_devices;
+                if (n_bslots >= isl_size) { //** Need to grow the tables
+                    log_printf(5, "REALLOCATING tables. isl_size=%d n_bslot=%d\n", isl_size, n_bslots);
+                    isl_size = 1.5*isl_size + 10;
+                    if (bused == bused_ptr) {
+                        tbx_type_malloc(rwb_table, lun_rw_row_t, s->n_devices * isl_size);
+                        tbx_type_malloc(bused, seglun_row_t *, isl_size);
+                        memcpy(rwb_table, rwb_table_ptr, sizeof(rwb_table_ptr));
+                        memcpy(bused, bused_ptr, sizeof(bused_ptr));
+                    } else {
+                        tbx_type_realloc(rwb_table, lun_rw_row_t, s->n_devices * isl_size);
+                        tbx_type_realloc(bused, seglun_row_t *, isl_size);
+                    }
+                }
                 memset(&(rwb_table[j]), 0, sizeof(lun_rw_row_t)*s->n_devices);
             }
 
@@ -1699,9 +1715,10 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
     if (s->inprogress_count == 0) apr_thread_cond_broadcast(seg->cond);
     segment_unlock(seg);
 
-    free(rwb_table);
-    free(bcount);
-    free(bused);
+    if (bused != bused_ptr) {
+        free(rwb_table);
+        free(bused);
+    }
     tbx_stack_free(stack, 0);
     gop_opque_free(q, OP_DESTROY);
 
