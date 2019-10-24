@@ -406,7 +406,7 @@ void io_open(target_t *t, rw_config_t *rwc)
                 abort();
             }
 
-            if (t->rw_mode > 0) lio_wq_enable(t->fd, rwc->n_parallel);
+            if (t->rw_mode == RW_LIO_WQ) lio_wq_enable(t->fd, rwc->n_parallel);
             return;
         case RW_LOCAL:
             if (rwc->n_targets == 1) {
@@ -1183,8 +1183,6 @@ void rw_load_options(tbx_inip_file_t *fd, char *group)
 
     rwc.read_sigma = tbx_inip_get_integer(fd, group, "read_sigma", 50);
     rwc.write_sigma = tbx_inip_get_integer(fd, group, "write_sigma", 50);
-
-    tbx_inip_destroy(fd);
 }
 
 //*************************************************************************
