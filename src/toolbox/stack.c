@@ -355,12 +355,12 @@ void *tbx_stack_next_up(tbx_stack_t *stack)
 
 
 //***************************************************
-// insert_link_below - Inserts an existing "unlinked"
+// tbx_stack_link_insert_below - Inserts an existing "unlinked"
 //      element "below" the current element and makes
 //      the new element the current element
 //***************************************************
 
-int insert_link_below(tbx_stack_t *stack, tbx_stack_ele_t *ele)
+int tbx_stack_link_insert_below(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 {
     int move_ends;
 
@@ -400,7 +400,7 @@ int tbx_stack_insert_below(tbx_stack_t *stack, void *data)
 
     ele =(tbx_stack_ele_t *) malloc(sizeof(tbx_stack_ele_t));
     ele->data = data;
-    int ret = insert_link_below(stack, ele);
+    int ret = tbx_stack_link_insert_below(stack, ele);
     if (!ret)
         free(ele);
     return ret;
