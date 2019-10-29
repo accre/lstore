@@ -1572,6 +1572,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
 {
     lio_fuse_t *lfs;
     char *section =  "lfs";
+    ex_off_t n;
 
     lio_fuse_init_args_t *init_args;
     lio_fuse_init_args_t real_args;
@@ -1622,9 +1623,11 @@ void *lfs_init_real(struct fuse_conn_info *conn,
     lfs->n_merge = tbx_inip_get_integer(lfs->lc->ifd, section, "n_merge", 128);
     conn->max_write = tbx_inip_get_integer(lfs->lc->ifd, section, "max_write", 10*1024*1024);
 #ifdef HAS_FUSE3
-    conn->max_read = tbx_inip_get_integer(lfs->lc->ifd, section, "max_read", 10*1024*1024);
+    n = tbx_inip_get_integer(lfs->lc->ifd, section, "max_read", -1);
+    if (n > -1) conn->max_read = n;
 #endif
-    conn->max_readahead = tbx_inip_get_integer(lfs->lc->ifd, section, "max_readahead", 1*1024*1024);
+    n = tbx_inip_get_integer(lfs->lc->ifd, section, "max_readahead", -1);
+    if (n > -1) conn->max_readahead = n;
     apr_pool_create(&(lfs->mpool), NULL);
     apr_thread_mutex_create(&(lfs->lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);
     lfs->open_files = apr_hash_make(lfs->mpool);
