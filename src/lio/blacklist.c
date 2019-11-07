@@ -120,8 +120,8 @@ void blacklist_destroy(lio_blacklist_t *bl)
         free(r);
     }
 
-    apr_pool_destroy(bl->mpool);
     apr_thread_mutex_destroy(bl->lock);
+    apr_pool_destroy(bl->mpool);
     free(bl);
 }
 
