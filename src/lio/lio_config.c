@@ -1004,7 +1004,7 @@ void lio_destroy_nl(lio_config_t *lio)
 
     //** Blacklist if used
     if (lio->blacklist != NULL) {
-        blacktbx_list_destroy(lio->blacklist);
+        blacklist_destroy(lio->blacklist);
     }
     if (lio->blacklist_section) free(lio->blacklist_section);
 

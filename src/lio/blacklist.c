@@ -107,7 +107,7 @@ int blacklist_check(lio_blacklist_t *bl, char *rid_key, int do_lock)
 // blacklist_destroy - Destroys a blacklist structure
 //***************************************************************
 
-void blacktbx_list_destroy(lio_blacklist_t *bl)
+void blacklist_destroy(lio_blacklist_t *bl)
 {
     apr_ssize_t hlen;
     apr_hash_index_t *hi;

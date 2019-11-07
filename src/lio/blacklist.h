@@ -52,7 +52,7 @@ struct lio_blacklist_t {
 void blacklist_remove_rs_added(lio_blacklist_t *bl);
 void blacklist_add(lio_blacklist_t *bl, char *rid_key, int rs_added, int do_lock);
 int blacklist_check(lio_blacklist_t *bl, char *rid_key, int do_lock);
-void blacktbx_list_destroy(lio_blacklist_t *bl);
+void blacklist_destroy(lio_blacklist_t *bl);
 lio_blacklist_t *blacklist_load(tbx_inip_file_t *ifd, char *section);
 
 #ifdef __cplusplus
