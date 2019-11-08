@@ -178,7 +178,6 @@ void gop_mq_frame_destroy(gop_mq_frame_t *f)
         f->data = NULL;
     } else if (f->auto_free == MQF_MSG_INTERNAL_FREE) {
         zmq_msg_close(&(f->zmsg));
-        zmq_msg_init(&(f->zmsg));
     }
     free(f);
 }
