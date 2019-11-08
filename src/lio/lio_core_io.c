@@ -671,7 +671,7 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
         n = lio_encode_error_counts(&serr, key, val, ebuf, v_size, 0);
         if ((serr.hard>0) || (serr.soft>0) || (serr.write>0)) {
             log_printf(1, "ERROR: fname=%s hard_errors=%d soft_errors=%d write_errors=%d\n", fd->path, serr.hard, serr.soft, serr.write);
-            _op_set_status(status, OP_STATE_FAILURE, -EIO);
+            if (serr.hard>0) _op_set_status(status, OP_STATE_FAILURE, -EIO);
         }
         if (n > 0) {
             err = lio_multiple_setattr_op(lc, fd->creds, fd->path, NULL, key, (void **)val, v_size, n);
