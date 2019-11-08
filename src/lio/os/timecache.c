@@ -345,8 +345,8 @@ ostcdb_object_t *new_ostcdb_object(char *entry, int ftype, apr_time_t expire, ap
     obj->ftype = ftype;
     obj->link = NULL;
     apr_pool_create(&(obj->mpool), NULL);
-    obj->objects = (ftype & OS_OBJECT_DIR_FLAG) ? apr_hash_make(mpool) : NULL;
-    obj->attrs = apr_hash_make(mpool);
+    obj->objects = (ftype & OS_OBJECT_DIR_FLAG) ? apr_hash_make(obj->mpool) : NULL;
+    obj->attrs = apr_hash_make(obj->mpool);
 
     return(obj);
 }
