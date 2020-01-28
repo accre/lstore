@@ -259,20 +259,27 @@ gop_op_status_t rsrc_response_get_config(void *task_arg, int tid)
     //** Store the config if changed.  This should trigger the child RS to auto load
     if (n_config > 0) {
         //** Dump the data in a temp file
-        n = strlen(rsrc->child_target_file)+10;
+        n = strlen(rsrc->child_target_file)+100;
         tbx_type_malloc(fname_tmp, char, n);
-        snprintf(fname_tmp, n, "%s.tmp", rsrc->child_target_file);
+        int64_t rnd = tbx_random_get_int64(0, 1000000000);
+        snprintf(fname_tmp, n, "%s." I64T , rsrc->child_target_file, rnd);
 
         fd = fopen(fname_tmp, "w");
-        assert_result(fwrite(config, n_config, 1, fd), 1);
+        err = fwrite(config, n_config, 1, fd);
         fclose(fd);
 
         //** Now move it into the place of the child target
-        err = apr_file_rename(fname_tmp, rsrc->child_target_file, rsrc->mpool);
-        if (err != APR_SUCCESS) {
+        if (err == 1) {
+            err = apr_file_rename(fname_tmp, rsrc->child_target_file, rsrc->mpool);
+            if (err != APR_SUCCESS) {
+                status = gop_failure_status;
+                log_printf(0, "ERROR: renaming target file!  tmp=%s target=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
+                fprintf(stderr, "ERROR: renaming target file!  tmp=%s target=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
+            }
+        } else {
             status = gop_failure_status;
-            log_printf(0, "ERROR: updating target file!  tmp=%s targe=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
-            fprintf(stderr, "ERROR: updating target file!  tmp=%s targe=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
+            log_printf(0, "ERROR: creating target temp file!  tmp=%s target=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
+            fprintf(stderr, "ERROR: creating target temp file!  tmp=%s target=%s err=%d\n", fname_tmp, rsrc->child_target_file, err);
         }
         free(fname_tmp);
     }
