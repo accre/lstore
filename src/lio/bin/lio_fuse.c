@@ -39,9 +39,9 @@ void print_usage(void)
            "       -d   -o debug          enable debug output (implies -f)\n"
            "       -s                     disable multi-threaded operation\n"
            "       -f                     foreground operation\n"
-           "                                (REQUIRED unless  '-c /absolute/path/lio.cfg' is specified and all included files are absolute paths)"
+           "                                (REQUIRED unless  '-c /absolute/path/lio.cfg' is specified and all included files are absolute paths)\n"
            "       -o OPT[,OPT...]        mount options\n"
-           "                                (for possible values of OPT see 'man mount.fuse' or see 'lio_fuse -ho')\n");
+           "                                (for possible values of OPT see 'man mount.fuse' or see 'lio_fuse -o -h')\n");
 }
 
 int main(int argc, char **argv)
