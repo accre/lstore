@@ -115,7 +115,7 @@ extern gop_op_status_t op_cant_connect_status;
 GOP_API extern gop_op_status_t gop_error_status;
 
 // Preprocessor macros
-#define _op_set_status(v, opstat, errcode) (v).op_status = opstat; (v).error_code = errcode
+#define _op_set_status(v, opstat, errcode) { (v).op_status = opstat; (v).error_code = errcode; }
 #define lock_gop(gop)   log_printf(15, "lock_gop: gid=%d\n", (gop)->base.id); apr_thread_mutex_lock((gop)->base.ctl->lock)
 #define unlock_gop(gop) log_printf(15, "unlock_gop: gid=%d\n", (gop)->base.id); apr_thread_mutex_unlock((gop)->base.ctl->lock)
 #define gop_id(gop) (gop)->base.id
