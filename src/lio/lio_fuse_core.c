@@ -743,13 +743,23 @@ int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct
     lio_fuse_t *lfs = lfs_get_context();
     ex_off_t nbytes;
     lio_fd_t *fd;
+    apr_time_t now;
+    double dt;
 
     fd = (lio_fd_t *)fi->fh;
 
+    ex_off_t t1, t2;
+    t1 = size;
+    t2 = off;
+
+    log_printf(1, "fname=%s size=" XOT " off=" XOT " fd=%p\n", fname, t1, t2, fd);
+    tbx_log_flush();
     if (fd == NULL) {
         log_printf(0, "ERROR: Got a null LFS handle\n");
         return(-EBADF);
     }
+
+    now = apr_time_now();
 
     //** Do the write op
     tbx_atomic_inc(lfs->write_cmds_inflight);
@@ -757,6 +767,12 @@ int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct
     nbytes = lio_write(fd, (char *)buf, size, off, lfs->rw_hints);
     tbx_atomic_dec(lfs->write_cmds_inflight);
     tbx_atomic_sub(lfs->write_bytes_inflight, size);
+
+    dt = apr_time_now() - now;
+    dt /= APR_USEC_PER_SEC;
+    log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=%zu nbytes=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, nbytes, dt);
+    tbx_log_flush();
+
     return(nbytes);
 }
 
