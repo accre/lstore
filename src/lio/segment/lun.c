@@ -631,7 +631,7 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
     rsq = rs_query_dup(s->rs, args->query);
 
     memset(hints_list, 0, sizeof(hints_list));
-    memset(db_working, 0, n_devices * sizeof(lio_data_block_t));
+    memset(db_working, 0, n_devices * sizeof(lio_data_block_t *));
 
     loop = 0;
     kick_out = 10000;
