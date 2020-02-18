@@ -157,7 +157,7 @@ int main(int argc, char **argv)
     tbx_type_malloc(buf1, char, buf_size);
     tbx_type_malloc(buf2, char, buf_size);
 
-    max_size = (fsize1 > fsize2) ? fsize2 : fsize1;
+    max_size = (fsize1 < fsize2) ? fsize1 : fsize2;
 
     printf("\n");
     printf("Printing comparision breakdown -- Single byte matches are suppressed (max_size=" I64T ")\n", max_size);
