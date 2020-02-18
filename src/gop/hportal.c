@@ -63,8 +63,6 @@ typedef struct {
     gop_op_status_t status;
 } hpc_cmd_t;
 
-typedef struct gop_portal_context_t gop_portal_context_t;
-
 typedef struct {
     char *skey;           //** Host name
     int ns_id;            //** Network ID

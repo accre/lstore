@@ -67,7 +67,6 @@ struct gop_portal_fn_t {
 };
 
 struct gop_portal_context_t;
-typedef struct gop_portal_context_t gop_portal_context_t;
 typedef struct gop_host_portal_t gop_host_portal_t;
 
 // Functions
