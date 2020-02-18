@@ -1602,10 +1602,6 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
         }
     }
 
-
-    //** Clean up
-    if (parity_len > s->max_parity_on_stack) free(parity);
-
     if (straddle_size > 0) {
         for (i=0; i<(straddle_used+1); i++) free(straddle_buffer[i]);
         free(straddle_buffer);
@@ -1620,6 +1616,9 @@ tryagain:  //** We first try allowing blacklisting to proceed as normal and then
         loop++;
         goto tryagain;
     }
+
+    //** Clean up
+    if (parity_len > s->max_parity_on_stack) free(parity);
 
     if ((soft_error+hard_error) > 0) {
         segment_lock(sw->seg);
@@ -1864,10 +1863,6 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
         }
     }
 
-
-    //** Clean up
-    if (parity_len > s->max_parity_on_stack) free(parity);
-
     if (straddle_size > 0) {
         for (i=0; i<(straddle_used+1); i++) free(straddle_buffer[i]);
         free(straddle_buffer);
@@ -1882,6 +1877,9 @@ tryagain: //** In case blacklisting failed we'll retry with it disabled
         loop++;
         goto tryagain;
     }
+
+    //** Clean up
+    if (parity_len > s->max_parity_on_stack) free(parity);
 
     if ((soft_error+hard_error) > 0) {
         segment_lock(sw->seg);
