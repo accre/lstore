@@ -16,6 +16,9 @@
 
 #define _log_module_index 189
 
+#include <unistd.h>
+#include <fcntl.h>
+
 #include <apr_time.h>
 #include <errno.h>
 #include <gop/gop.h>
@@ -84,7 +87,7 @@ void lio_open_files_info_fn(void *arg, FILE *fd)
     ex_id_t *fid;
     char ppbuf[100];
     double d;
-    
+
     fprintf(fd, "LIO Open File list ----------------------\n");
 
     lio_lock(lc);
@@ -1107,6 +1110,185 @@ typedef struct {
     int truncate;
 } lio_cp_fn_t;
 
+
+//***********************************************************************
+// local2local_real - Does the actual local2local copy operation
+//***********************************************************************
+
+gop_op_status_t local2local_real(lio_cp_fn_t *op, char *buffer, ex_off_t bufsize_in)
+{
+    char *rb, *wb, *tb;
+    ex_off_t bufsize, err;
+    ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, block_size;
+    ex_off_t initial_len, base_len, pplen;
+    gop_op_status_t status;
+    apr_time_t loop_start;
+    double dt_loop;
+
+    //** Set up the buffers
+    got = (op->offset < 0) ? 0 : op->offset;  //** Get the starting offset, -1=no seek
+    block_size = 4096;
+    tlen = (bufsize_in / 2 / block_size) - 1;
+    pplen = block_size - (got % block_size);
+    if (tlen <= 0) {
+        bufsize = bufsize_in / 2;
+        initial_len = base_len = bufsize;
+    } else {
+        base_len = tlen * block_size;
+        bufsize = base_len + block_size;
+        initial_len = base_len + pplen;
+    }
+
+   //** The buffer is split for R/W
+    rb = buffer;
+    wb = &(buffer[bufsize]);
+
+    nbytes = op->len;
+    status = gop_success_status;
+
+    //** Read the initial block
+    rpos = op->offset;
+    wpos = op->offset2;
+
+    if (rpos != -1) {
+        fseek(op->sffd, rpos, SEEK_SET); //** Move to the start of the read
+    } else {
+        rpos = 0;
+    }
+    if (wpos != -1) {
+        fseek(op->dffd, wpos, SEEK_SET); //** Move to the start of the write
+    } else {
+        wpos = 0;
+    }
+
+    if (nbytes < 0) {
+        err = posix_fadvise(fileno(op->sffd), rpos, 0, POSIX_FADV_SEQUENTIAL);
+        rlen = initial_len;
+    } else {
+        err = posix_fadvise(fileno(op->sffd), rpos, nbytes, POSIX_FADV_SEQUENTIAL);
+        rlen = (nbytes > initial_len) ? initial_len : nbytes;
+    }
+
+    wlen = 0;
+    rpos += rlen;
+    if (nbytes > 0) nbytes -= rlen;
+    log_printf(0, "FILE fd=%p bufsize=" XOT " rlen=" XOT " nbytes=" XOT " posix_fadvise=" XOT "\n", op->sffd, bufsize, rlen, nbytes, err);
+
+    loop_start = apr_time_now();
+    got = fread(rb, 1, rlen, op->sffd);
+    if (got == 0) {
+        if (feof(op->sffd) == 0)  {
+            log_printf(1, "ERROR from fread=%d  rlen=" XOT " got=" XOT "\n", errno, rlen, got);
+            status = gop_failure_status;
+        }
+        goto finished;
+    }
+    rlen = got;
+
+    bufsize = base_len;  //** Everything else uses the base_len
+
+    do {
+        //** Swap the buffers
+        tb = rb;
+        rb = wb;
+        wb = tb;
+        tlen = rlen;
+        rlen = wlen;
+        wlen = tlen;
+
+        log_printf(1, "wpos=" XOT " rlen=" XOT " wlen=" XOT "\n", wpos, rlen, wlen);
+        loop_start = apr_time_now();
+
+        //** Start the write
+        err = fwrite(wb, 1, wlen, op->dffd);
+	if (err != wlen) {
+            log_printf(1, "ERROR write failed! wpos=" XOT " len=" XOT " err=" XOT " errno=%d\n", wpos, wlen, err, errno);
+            goto finished;
+        }
+        wpos += wlen;
+
+        //** Read in the next block
+        if (nbytes < 0) {
+            rlen = bufsize;
+        } else {
+            rlen = (nbytes > bufsize) ? bufsize : nbytes;
+        }
+        if (rlen > 0) {
+            got = fread(rb, 1, rlen, op->sffd);
+            if (got == 0) {
+                if (feof(op->sffd) == 0)  {
+                    log_printf(1, "ERROR read failed and not EOF! errno=%d\n", errno);
+                    goto finished;
+                }
+            }
+            rlen = got;
+            rpos += rlen;
+            if (nbytes > 0) nbytes -= rlen;
+        }
+
+        dt_loop = apr_time_now() - loop_start;
+        dt_loop /= (double)APR_USEC_PER_SEC;
+
+        log_printf(1, "dt_loop=%lf nleft=" XOT " rlen=" XOT " err=%d\n", dt_loop, nbytes, rlen, errno);
+    } while ((rlen > 0) && (nbytes != 0));
+
+    if (op->truncate == 1) {  //** Truncate if wanted
+        ftruncate(fileno(op->dffd), ftell(op->dffd));
+    }
+
+finished:
+    return(status);
+}
+
+
+//***********************************************************************
+// lio_cp_local2lio - Copies a local file to LIO
+//***********************************************************************
+
+gop_op_status_t lio_cp_local2local_fn(void *arg, int id)
+{
+    lio_cp_fn_t *op = (lio_cp_fn_t *)arg;
+    gop_op_status_t status;
+    char *buffer;
+    ex_off_t bufsize;
+
+    buffer = op->buffer;
+    bufsize = (op->bufsize <= 0) ? LIO_COPY_BUFSIZE-1 : op->bufsize-1;
+
+    if (buffer == NULL) { //** Need to make it ourself
+        tbx_type_malloc(buffer, char, bufsize+1);
+    }
+
+    status = local2local_real(op, buffer, bufsize);
+
+    //** Clean up
+    if (op->buffer == NULL) free(buffer);
+
+    return(status);
+}
+
+//***********************************************************************
+
+gop_op_generic_t *lio_cp_local2local_gop(FILE *sfd, FILE *dfd, ex_off_t bufsize, char *buffer, ex_off_t src_offset, ex_off_t dest_offset, ex_off_t len, int truncate, lio_segment_rw_hints_t *rw_hints)
+{
+    lio_cp_fn_t *op;
+
+    tbx_type_malloc_clear(op, lio_cp_fn_t, 1);
+
+    op->buffer = buffer;
+    op->bufsize = bufsize;
+    op->offset = src_offset;
+    op->offset2 = dest_offset;
+    op->len = len;
+    op->sffd = sfd;
+    op->dffd = dfd;
+    op->truncate = truncate;
+    op->rw_hints = rw_hints;
+
+    return(gop_tp_op_new(lio_gc->tpc_unlimited, NULL, lio_cp_local2local_fn, (void *)op, free, 1));
+
+}
+
 //***********************************************************************
 // lio_cp_local2lio - Copies a local file to LIO
 //***********************************************************************
@@ -1288,33 +1470,50 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
 
     buffer = NULL;
 
-    if ((cp->src_tuple.is_lio == 0) && (cp->dest_tuple.is_lio == 0)) {  //** Not allowed to both go to disk
+    if (((cp->src_tuple.is_lio == 0) && (cp->dest_tuple.is_lio == 0)) && (cp->enable_local == 0)) {  //** Not allowed to both go to disk
         info_printf(lio_ifd, 0, "Both source(%s) and destination(%s) are local files!\n", cp->src_tuple.path, cp->dest_tuple.path);
         return(gop_failure_status);
     }
 
     already_exists = 0;  //** Let's us know if we remove the destination in case of a failure.
 
-    if (cp->src_tuple.is_lio == 0) {  //** Source is a local file and dest is lio
+    if (cp->src_tuple.is_lio == 0) {  //** Source is a local file and dest is lio (or local if enabled)
         sffd = fopen(cp->src_tuple.path, "r");
         info_printf(lio_ifd, 0, "copy %s %s@%s:%s\n", cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->obj_name, cp->dest_tuple.path);
 
-        already_exists = lio_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path); //** Track if the file was already there for cleanup
-        gop_sync_exec(lio_open_gop(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
+        if (cp->dest_tuple.is_lio == 1) {
+            already_exists = lio_exists(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path); //** Track if the file was already there for cleanup
+            gop_sync_exec(lio_open_gop(cp->dest_tuple.lc, cp->dest_tuple.creds, cp->dest_tuple.path, lio_fopen_flags("w"), NULL, &dlfd, 60));
 
-        if ((sffd == NULL) || (dlfd == NULL)) { //** Got an error
-            if (sffd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->src_tuple.path);
-            if (dlfd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening destination file!  path=%s\n", cp->dest_tuple.path);
-            status = gop_failure_status;
-        } else {
-            tbx_type_malloc(buffer, char, cp->bufsize+1);
-            status = gop_sync_exec_status(lio_cp_local2lio_gop(sffd, dlfd, cp->bufsize, buffer, 0, -1, 1, cp->rw_hints));
+            if ((sffd == NULL) || (dlfd == NULL)) { //** Got an error
+                if (sffd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->src_tuple.path);
+                if (dlfd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening destination file!  path=%s\n", cp->dest_tuple.path);
+                status = gop_failure_status;
+            } else {
+                tbx_type_malloc(buffer, char, cp->bufsize+1);
+                status = gop_sync_exec_status(lio_cp_local2lio_gop(sffd, dlfd, cp->bufsize, buffer, 0, -1, 1, cp->rw_hints));
+            }
+            if (dlfd != NULL) {
+                close_status = gop_sync_exec_status(lio_close_gop(dlfd));
+                if (close_status.op_status != OP_STATE_SUCCESS) status = close_status;
+            }
+            if (sffd != NULL) fclose(sffd);
+        } else if (cp->enable_local == 1) {  //** local2local copy
+            already_exists = lio_os_local_filetype(cp->dest_tuple.path); //** Track if the file was already there for cleanup
+            dffd = fopen(cp->dest_tuple.path, "w");
+
+            if ((sffd == NULL) || (dffd == NULL)) { //** Got an error
+                if (sffd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->src_tuple.path);
+                if (dffd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening destination file!  path=%s\n", cp->dest_tuple.path);
+                status = gop_failure_status;
+            } else {
+                tbx_type_malloc(buffer, char, cp->bufsize+1);
+                status = gop_sync_exec_status(lio_cp_local2local_gop(sffd, dffd, cp->bufsize, buffer, 0, 0, -1, 1, cp->rw_hints));
+            }
+            if (dlfd != NULL) fclose(dffd);
+            if (sffd != NULL) fclose(sffd);
+
         }
-        if (dlfd != NULL) {
-            close_status = gop_sync_exec_status(lio_close_gop(dlfd));
-            if (close_status.op_status != OP_STATE_SUCCESS) status = close_status;
-        }
-        if (sffd != NULL) fclose(sffd);
     } else if (cp->dest_tuple.is_lio == 0) {  //** Source is lio and dest is local
         info_printf(lio_ifd, 0, "copy %s@%s:%s %s\n", an_cred_get_id(cp->src_tuple.creds), cp->src_tuple.lc->obj_name, cp->src_tuple.path, cp->dest_tuple.path);
         already_exists = lio_os_local_filetype(cp->dest_tuple.path); //** Track if the file was already there for cleanup

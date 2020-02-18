@@ -283,9 +283,8 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
         initial_len = base_len = bufsize;
     } else {
         base_len = tlen * block_size;
+        bufsize = base_len + block_size;
         initial_len = base_len + pplen;
-        if (pplen == block_size) base_len = initial_len;
-        bufsize = initial_len;
     }
 
     rb = sc->buffer;
@@ -305,9 +304,9 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
         if (nbytes > sc->len) nbytes = sc->len;
     }
     if (nbytes < 0) {
-        rlen = bufsize;
+        rlen = initial_len;
     } else {
-        rlen = (nbytes > bufsize) ? bufsize : nbytes;
+        rlen = (nbytes > initial_len) ? initial_len : nbytes;
     }
 
     log_printf(5, "FILE fd=%p\n", sc->fd);
@@ -452,12 +451,11 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
         initial_len = base_len = bufsize;
     } else {
         base_len = tlen * block_size;
+        bufsize = base_len + block_size;
         initial_len = base_len + pplen;
-        if (pplen == block_size) base_len = initial_len;
-        bufsize = initial_len;
     }
 
-   //** The buffer is split for R/W
+    //** The buffer is split for R/W
     rb = sc->buffer;
     wb = &(sc->buffer[bufsize]);
     tbx_tbuf_single(&tbuf1, bufsize, rb);
@@ -480,11 +478,10 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
     //** Read the initial block
     rpos = 0;
     wpos = sc->dest_offset;
-
     if (nbytes < 0) {
-        rlen = bufsize;
+        rlen = initial_len;
     } else {
-        rlen = (nbytes > bufsize) ? bufsize : nbytes;
+        rlen = (nbytes > initial_len) ? initial_len : nbytes;
     }
 
     wlen = 0;

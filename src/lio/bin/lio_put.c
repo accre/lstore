@@ -16,6 +16,10 @@
 
 #define _log_module_index 204
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <gop/gop.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,13 +33,39 @@
 #include <lio/lio.h>
 #include <lio/os.h>
 
+
+//*************************************************************************
+// local_put - Put data to a local file
+
+//*************************************************************************
+
+int local_put(lio_path_tuple_t *tuple, ex_off_t bufsize, char *buffer, ex_off_t offset, ex_off_t len, int truncate)
+{
+    FILE *fd;
+    gop_op_status_t status;
+
+    fd = fopen(tuple->path, "r+");
+    if (fd == NULL) {  //* File may not exist so create if necessary
+        fd = fopen(tuple->path, "w+");
+        if (fd == NULL) {
+            fprintf(stderr, "ERROR opening file %s\n", tuple->path);
+            return(errno);
+        }
+    }
+
+    status = gop_sync_exec_status(lio_cp_local2local_gop(stdin, fd, bufsize, buffer, -1, offset, len, truncate, NULL));
+
+    fclose(fd);
+    return(status.error_code);
+}
+
 //*************************************************************************
 //*************************************************************************
 
 int main(int argc, char **argv)
 {
     ex_off_t bufsize, offset, len;
-    int err, err_close, dtype, i, start_index, start_option, truncate;
+    int err, err_close, dtype, i, start_index, start_option, truncate, enable_local;
     lio_fd_t *fd;
     char *buffer;
     char ppbuf[32];
@@ -45,12 +75,13 @@ int main(int argc, char **argv)
 
     if (argc < 2) {
         printf("\n");
-        printf("lio_put LIO_COMMON_OPTIONS [-b bufsize] [-o offset len] [--no-truncate] dest_file\n");
+        printf("lio_put LIO_COMMON_OPTIONS [-b bufsize] [-o offset len] [--no-truncate] [--local] dest_file\n");
         lio_print_options(stdout);
         printf("    -b bufsize         - Buffer size to use. Units supported (Default=%s)\n", tbx_stk_pretty_print_int_with_scale(bufsize, ppbuf));
         printf("    -o offset len      - Place the data starting at the provided offset and length.\n");
         printf("                         If the length is -1 then all data is stored (default). Units are supported\n");
         printf("    --no-truncate      - Don't truncate the file. Defaults to truncating the file\n");
+        printf("    --local            - Enable writing to a local file in addition to LStore file.\n");
         printf("    dest_file          - Destination file\n");
         return(1);
     }
@@ -63,7 +94,7 @@ int main(int argc, char **argv)
     offset = 0;
     len = -1;
     truncate = 1;
- 
+    enable_local = 0;
     i=1;
     do {
         start_option = i;
@@ -81,6 +112,9 @@ int main(int argc, char **argv)
         } else if (strcmp(argv[i], "--no-truncate") == 0) {
             i++;
             truncate = 0;
+        } else if (strcmp(argv[i], "--local") == 0) {
+            i++;
+            enable_local = 1;
         }
     } while ((start_option - i < 0) && (i<argc));
     start_index = i;
@@ -91,14 +125,21 @@ int main(int argc, char **argv)
         return(2);
     }
 
-    //** Make the buffer
-    tbx_type_malloc(buffer, char, bufsize+1);
+    //** Make the buffer. This makes sure it's page aligned for both R and W buffers
+    tbx_fudge_align_size(bufsize, 2*getpagesize());
+    tbx_malloc_align(buffer, getpagesize(), bufsize);
 
     //** Get the destination
     tuple = lio_path_resolve(lio_gc->auto_translate, argv[start_index]);
-    if (tuple.is_lio < 0) {
-        fprintf(stderr, "Unable to parse path: %s\n", argv[start_index]);
-        return(EINVAL);
+    if (tuple.is_lio == 0) {
+        if (enable_local == 1) {
+            err = local_put(&tuple, bufsize, buffer, offset, len, truncate);
+        } else {
+            fprintf(stderr, "Unable to parse path: %s\n", tuple.path);
+            err = EINVAL;
+        }
+
+        goto finished;
     }
 
     //** Check if it exists and if not create it
