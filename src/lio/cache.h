@@ -191,6 +191,7 @@ struct lio_cache_t {
     ex_off_t min_direct;
     double   max_fetch_fraction;
     double   write_temp_overflow_fraction;
+    int coredump_pages;
     int n_ppages;
     int timeout;
     int  shutdown_request;

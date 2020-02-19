@@ -27,6 +27,7 @@
 #include <gop/opque.h>
 #include <gop/tp.h>
 #include <gop/types.h>
+#include <sys/mman.h>
 #include <stdlib.h>
 #include <tbx/apr_wrapper.h>
 #include <tbx/atomic_counter.h>
@@ -472,6 +473,7 @@ lio_cache_page_t *_amp_new_page(lio_cache_t *c, lio_segment_t *seg)
         p->curr_data = &(p->data[0]);
         p->current_index = 0;
         tbx_type_malloc_clear(p->curr_data->ptr, char, s->page_size);
+        if (c->coredump_pages == 0) madvise(p->curr_data->ptr, s->page_size, MADV_DONTDUMP);
     }
 
     cp->bytes_used += s->page_size;
@@ -1432,6 +1434,7 @@ void amp_print_running_config(lio_cache_t *c, FILE *fd, int print_section_headin
     fprintf(fd, "write_temp_overflow_fraction = %lf\n", c->write_temp_overflow_fraction);
     fprintf(fd, "ppages = %d\n", c->n_ppages);
     fprintf(fd, "min_direct = %s\n", tbx_stk_pretty_print_int_with_scale(c->min_direct, text));
+    fprintf(fd, "coredump_pages = %d\n", c->coredump_pages);
     fprintf(fd, "\n");
 }
 
@@ -1576,7 +1579,8 @@ lio_cache_t *amp_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr
     lio_cache_t *c;
     lio_cache_amp_t *cp;
     int dt;
-
+    char *v;
+    
     //** Create the default structure
     c = amp_cache_create(arg, da, timeout);
     cp = (lio_cache_amp_t *)c->fn.priv;
@@ -1604,6 +1608,16 @@ lio_cache_t *amp_cache_load(void *arg, tbx_inip_file_t *fd, char *grp, data_attr
     c->write_temp_overflow_size = c->write_temp_overflow_fraction * cp->max_bytes;
     c->n_ppages = tbx_inip_get_integer(fd, cp->section, "ppages", c->n_ppages);
     c->min_direct = tbx_inip_get_integer(fd, cp->section, "min_direct", -1);
+    c->coredump_pages = tbx_inip_get_integer(fd, cp->section, "coredump_pages", 0);
+
+    v = getenv("COREDUMP_PAGES");
+    if (v) {
+        dt = atoi(v);
+        if ((dt == 0) || (dt == 1)) {
+            log_printf(1, "WARN: Overriding coredump_pages setting in config (%d) with environment variable (%d)\n", c->coredump_pages, dt);
+            c->coredump_pages = dt;
+        }
+    }
 
     cache_unlock(c);
 
