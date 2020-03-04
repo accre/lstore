@@ -410,12 +410,21 @@ typedef struct {
 
 int lio_wq_enable(lio_fd_t *fd, int max_in_flight)
 {
+    wq_context_t *ctx;
+    int throwaway = 0;
+
+    //** Make it outside the lock in case we're dumping to not trigger a deadlock
+    ctx = wq_context_create(fd, max_in_flight);
     segment_lock(fd->fh->seg);
     if (!fd->fh->wq_ctx) {
-        fd->fh->wq_ctx = wq_context_create(fd, max_in_flight);
+        fd->fh->wq_ctx = ctx;
         log_printf(15, "wq_ctx=%p\n", fd->fh->wq_ctx);
+    } else {
+         throwaway = 1;
     }
     segment_unlock(fd->fh->seg);
+
+    if (throwaway) wq_context_destroy(ctx);
 
     if (fd->fh->wq_ctx == NULL) return(1);
 
@@ -690,16 +699,17 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
             goto finished;
         }
 
-        //** Shutdown the Work Queue context if needed
-        if (fh->wq_ctx != NULL) {
-            wq_context_destroy(fh->wq_ctx);
-            fh->wq_ctx = NULL;
-        }
-
         //** Tear everything down
         lio_exnode_destroy(fh->ex);
         _lio_remove_file_handle(lc, fh);
         lio_unlock(lc);
+
+        //** Shutdown the Work Queue context if needed
+        //** This is done outside the lock in case a siginfo is triggered
+        if (fh->wq_ctx != NULL) {
+            wq_context_destroy(fh->wq_ctx);
+            fh->wq_ctx = NULL;
+        }
 
         if (fh->write_table != NULL) lio_store_and_release_adler32(lc, fd->creds, fh->write_table, fd->path);
         if (fh->remove_on_close == 1) status = gop_sync_exec_status(lio_remove_gop(lc, fd->creds, fd->path, NULL, lio_exists(lc, fd->creds, fd->path)));
@@ -736,18 +746,19 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
         goto finished;
     }
 
-    //** Shutdown the Work Queue context if needed
-    if (fh->wq_ctx != NULL) {
-        wq_context_destroy(fh->wq_ctx);
-        fh->wq_ctx = NULL;
-    }
-
     //** Clean up
     now = apr_time_now();
     lio_exnode_destroy(fh->ex); //** This is done in the lock to make sure the exnode isn't loaded twice
     _lio_remove_file_handle(lc, fh);
 
     lio_unlock(lc);
+
+    //** Shutdown the Work Queue context if needed
+    //** This is done outside the lock in case a siginfo is triggered
+    if (fh->wq_ctx != NULL) {
+        wq_context_destroy(fh->wq_ctx);
+        fh->wq_ctx = NULL;
+    }
 
     dt = apr_time_now() - now;
     dt /= APR_USEC_PER_SEC;

@@ -34,6 +34,7 @@
 #include <tbx/fmttypes.h>
 #include <tbx/list.h>
 #include <tbx/log.h>
+#include <tbx/que.h>
 #include <tbx/stack.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
@@ -256,7 +257,6 @@ struct wq_context_s {    //** Device context
     struct iovec      *iov;
     apr_pool_t        *mpool;
     tbx_stack_t       *wq;
-    int               pipe[2];
     wq_work_t         work[2];
     int max_tasks;
     int n_iov;
@@ -271,36 +271,41 @@ typedef struct {
     apr_thread_t *thread;
     apr_pool_t *mpool;
     apr_thread_mutex_t *lock;
-    int pipe[2];
+    tbx_que_t *pipe;
     int n_parallel;
 } wq_global_t;
 
 static wq_global_t *wq_global = NULL;
 
-void wq_add_task(wq_op_t *op);
 void wq_ctx_shutdown(wq_context_t *ctx);
+void wq_ctx_init(wq_context_t *ctx);
+
 
 //--------------------------------------------------------------------------
 //  Routines for plugging into the GOP framework
 //--------------------------------------------------------------------------
 
-void *_wqp_dup_connect_context(void *connect_context);
-void _wqp_destroy_connect_context(void *connect_context);
-int _wqp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout);
-void _wqp_close_connection(tbx_ns_t *ns);
-void _wqp_submit_op(void *arg, gop_op_generic_t *op);
+// *** Simple submit for the HPortal *****
+void _wqp_submit_op(void *arg, gop_op_generic_t *gop)
+{
+    wq_op_t *op = gop->op->priv;
+
+    log_printf(15, "_wqp_submit_op: gid=%d\n", gop_id(gop));
+
+    tbx_que_put(wq_global->pipe, &op, TBX_QUE_BLOCK);
+}
+
+//*************************************************************
 
 static gop_portal_fn_t _wqp_base_portal = {
-    .dup_connect_context = _wqp_dup_connect_context,
-    .destroy_connect_context = _wqp_destroy_connect_context,
-    .connect = _wqp_connect,
-    .close_connection = _wqp_close_connection,
-    .sort_tasks = gop_default_sort_ops,
+    .dup_connect_context = NULL,
+    .destroy_connect_context = NULL,
+    .connect = NULL,
+    .close_connection = NULL,
+    .sort_tasks = NULL,
     .submit = _wqp_submit_op,
     .sync_exec = NULL
 };
-
-void wq_ctx_init(wq_context_t *ctx);
 
 //*************************************************************
 
@@ -383,47 +388,6 @@ gop_op_generic_t *wq_op_new(wq_context_t *ctx, lio_rw_op_t *rw_op, int rw_mode)
     return(gop);
 }
 
-//*************************************************************
-
-void _wqp_submit_op(void *arg, gop_op_generic_t *gop)
-{
-    wq_op_t *op = gop->op->priv;
-
-    log_printf(15, "_wqp_submit_op: gid=%d\n", gop_id(gop));
-
-    wq_add_task(op);
-}
-
-//********************************************************************
-
-void *_wqp_dup_connect_context(void *connect_context)
-{
-    return(NULL);
-}
-
-//********************************************************************
-
-void _wqp_destroy_connect_context(void *connect_context)
-{
-    return;
-}
-
-//**********************************************************
-
-int _wqp_connect(tbx_ns_t *ns, void *connect_context, char *host, int port, tbx_ns_timeout_t timeout)
-{
-    tbx_ns_setid(ns, tbx_ns_generate_id());
-    return(0);
-}
-
-
-//**********************************************************
-
-void _wqp_close_connection(tbx_ns_t *ns)
-{
-    return;
-}
-
 //--------------------------------------------------------------------------
 // Actual Work Queue code
 //--------------------------------------------------------------------------
@@ -449,78 +413,26 @@ int wq_compare(const void *p1, const void *p2)
 }
 
 //***********************************************************************
-// wq_get_task - Gets a task for execution
-//***********************************************************************
-
-wq_op_t *wq_get_task(int fd, int wait)
-{
-    struct pollfd pfd;
-    char *buf;
-    wq_op_t *op;
-    int n, i, nleft;
-
-    if (wait == 0) {
-        pfd.fd = fd;
-        pfd.events = POLLIN;
-        pfd.revents = 0;
-        if (poll(&pfd, 1, 0) == 0) return(0);
-    }
-
-    op = NULL;
-    nleft = sizeof(op); i = 0;
-    buf = (char *)&op;  //** Read the new op pointer
-    do {
-        n = read(fd, buf + i, nleft);
-        if (n == -1) {
-            fprintf(stderr, "ERROR reading to pipe! errno=%d\n", errno);
-            log_printf(0, "ERROR reading to pipe! errno=%d\n", errno);
-            abort();
-        }
-        nleft -= n;
-        i += n;
-    } while (nleft > 0);
-
-    return(op);
-}
-
-//***********************************************************************
 // wq_add_task - Adds a task for execution
 //***********************************************************************
 
 void wq_add_task(wq_op_t *op)
 {
-    char *buf;
-    int n, i, nleft;
-
-    nleft = sizeof(op); i = 0;
-    buf = (char *)&op;  //**Push the OP pointer to the pipe
-    apr_thread_mutex_lock(wq_global->lock);
-    do {
-        n = write(wq_global->pipe[OP_WRITE], buf + i, nleft);
-        if (n == -1) {
-            fprintf(stderr, "ERROR writing to pipe! errno=%d\n", errno);
-            log_printf(0, "ERROR writing to pipe! errno=%d\n", errno);
-            abort();
-        }
-        nleft -= n;
-        i += n;
-    } while (nleft > 0);
-    apr_thread_mutex_unlock(wq_global->lock);
+    tbx_que_put(wq_global->pipe, &op, TBX_QUE_BLOCK);
 }
 
 //***********************************************************************
 // wq_fetch_tasks - Fetches the incoming tasks for execution
 //***********************************************************************
 
-int wq_fetch_tasks(apr_hash_t *table, int pfd)
+int wq_fetch_tasks(apr_hash_t *table, tbx_que_t *que)
 {
     wq_op_t *t;
     int n;
 
 
     n = 0;
-    t = wq_get_task(pfd, 1);
-    for (;;) {
+    while (tbx_que_get(que, &t, (n == 0) ? TBX_QUE_BLOCK : 0) == 0) {
         if (t == NULL) break;
         if (t == (void *)1) return(-(n+1));  //** Kick out
 
@@ -530,8 +442,6 @@ int wq_fetch_tasks(apr_hash_t *table, int pfd)
         }
         tbx_stack_push(t->ctx->wq, t);
         n++;
-
-        t = wq_get_task(pfd, 0);
     }
 
     return(n);
@@ -775,7 +685,7 @@ void *wq_backend_thread(apr_thread_t *th, void *data)
 
     finished = 0;
     while (finished != -1) {
-        finished = wq_fetch_tasks(table, wq->pipe[OP_READ]);
+        finished = wq_fetch_tasks(table, wq->pipe);
         if (finished != 0) wq_process(wq, table, mpool);
     }
 
@@ -828,11 +738,7 @@ void lio_wq_startup(int n_parallel)
     tbx_type_malloc_clear(wq_global, wq_global_t, 1);
     wq_global->n_parallel = n_parallel;
 
-    if (pipe(wq_global->pipe) == -1) {
-        fprintf(stderr, "ERROR creating pipe! errno=%d\n", errno);
-        log_printf(0, "ERROR creating pipe! errno=%d\n", errno);
-        abort();
-    }
+    wq_global->pipe = tbx_que_create(10000, sizeof(wq_op_t *));
 
     apr_pool_create(&(wq_global->mpool), NULL);
     apr_thread_mutex_create(&(wq_global->lock), APR_THREAD_MUTEX_DEFAULT, wq_global->mpool);
@@ -853,14 +759,13 @@ void lio_wq_shutdown()
 
     //** Notify the backend thread
     op = (void *)1;
-    wq_add_task(op);
+    tbx_que_put(wq_global->pipe, &op, TBX_QUE_BLOCK);
 
     //** Wait for it to exit
     apr_thread_join(&value, wq_global->thread);
 
     //** Close the pipe
-    if (wq_global->pipe[OP_READ] > 0) close(wq_global->pipe[OP_READ]);
-    if (wq_global->pipe[OP_WRITE] > 0) close(wq_global->pipe[OP_WRITE]);
+    if (wq_global->pipe) tbx_que_destroy(wq_global->pipe);
 
     //** Cleanup the lock
     apr_thread_mutex_destroy(wq_global->lock);
