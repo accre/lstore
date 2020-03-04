@@ -1695,6 +1695,14 @@ void lfs_destroy(void *private_data)
     tbx_siginfo_handler_remove(SIGUSR1, lio_fuse_info_fn, lfs);
 
     //** We're ignoring cleaning up the open files table since were only using this on FUSE and FUSE should have closed all files
+    //** Check and make sure FUSE closed all the files
+    lio_fuse_open_file_t *fop;
+    apr_hash_index_t *hi;
+    for (hi=apr_hash_first(lfs->mpool, lfs->open_files); hi; hi = apr_hash_next(hi)) {
+        apr_hash_this(hi, NULL, NULL, (void **)&fop);
+        log_printf(0, "ERROR: LFS_OPEN_FILE: fname=%s sid= " XIDT " ref=%d remove=%d\n", fop->fname, fop->sid, fop->ref_count, fop->remove_on_close);
+        tbx_log_flush();
+    }
 
     //** Clean up everything else
     if (lfs->id != NULL) free (lfs->id);
