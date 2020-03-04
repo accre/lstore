@@ -1866,7 +1866,8 @@ int cache_write_pages_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, 
         coff = lo_row;
         if (p) p->access_pending[CACHE_READ]++;  //** Preserve the page from deletion
 
-        np = s->c->fn.create_empty_page(s->c, seg, 0);  //** Get the empty page  if possible
+        np = NULL;
+        if ((coff < pstart) && (*n_pages < max_pages)) np = s->c->fn.create_empty_page(s->c, seg, 0);  //** Get the next empty page  if possible
         while ((np != NULL) && (coff < pstart) && (*n_pages < max_pages)) {
             s_cache_page_init(seg, np, coff);
             if (full_page_overlap(coff, s->page_size, lo, hi) == 0) {
@@ -2002,7 +2003,8 @@ int cache_write_pages_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, 
                         p->access_pending[CACHE_READ]++;  //** Preserve the page from deletion
 
                         log_printf(15, "seg=" XIDT " before blank loop coff=" XOT " pstart=" XOT "\n", segment_id(seg), coff, pstart);
-                        if (coff < pstart) np = s->c->fn.create_empty_page(s->c, seg, 0);  //** Get the empty page  if possible
+                        np = NULL;
+                        if ((coff < pstart) && (*n_pages < max_pages)) np = s->c->fn.create_empty_page(s->c, seg, 0);  //** Get the empty page if possible
                         while ((np != NULL) && (coff < pstart) && (*n_pages < max_pages)) {
                             if (np != NULL) {
                                 s_cache_page_init(seg, np, coff);
@@ -2017,7 +2019,7 @@ int cache_write_pages_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, 
                                 }
 
                                 _cache_add_page_to_list(s->c, np, &page[*n_pages], &iov[*n_pages], CACHE_WRITE, master_size, s->page_size);
-                                (*n_pages)++;        
+                                (*n_pages)++;
 
                                 *hi_got = coff + s->page_size - 1;
 
@@ -2027,7 +2029,7 @@ int cache_write_pages_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, 
 
                                 coff += s->page_size;
 
-                                if ((coff < pstart) && (*n_pages < max_pages)) np = s->c->fn.create_empty_page(s->c, seg, 0);  //** Get the empty page  if possible
+                                if ((coff < pstart) && (*n_pages < max_pages)) np = s->c->fn.create_empty_page(s->c, seg, 0);  //** Get the empty page if possible
                             }
                             log_printf(15, "pstart=" XOT " coff=" XOT "\n", pstart, coff);
                         }
@@ -2066,7 +2068,7 @@ int cache_write_pages_get(lio_segment_t *seg, lio_segment_rw_hints_t *rw_hints, 
             p->access_pending[CACHE_WRITE]--;  //** Both force_get and add_page_to_list update this so adjust for double counting
             cache_unlock(s->c);
 
-            (*n_pages)++;        
+            (*n_pages)++;
 
             *hi_got = lo_row + s->page_size - 1;
             skip_mode = 0;
@@ -3860,11 +3862,12 @@ int segcache_deserialize_text(lio_segment_t *seg, ex_id_t myid, lio_exnode_excha
     }
     log_printf(5, "seg=" XIDT " Initial child_last_page=" XOT " child_size=" XOT " page_size=" XOT "\n", segment_id(seg), s->child_last_page, child_size, s->page_size);
 
-    if (s->direct_io == 1) return(0);  //** Nothing else to do for direct I/O
-
     //** Make the partial pages table
     s->n_ppages = (s->c != NULL) ? s->c->n_ppages : 0;
     s->ppage_max = -1;
+
+    if (s->direct_io == 1) return(0);  //** Nothing else to do for direct I/O
+
     if (s->n_ppages > 0) {
         tbx_type_malloc_clear(s->ppage, lio_cache_partial_page_t, s->n_ppages);
         tbx_type_malloc_clear(s->ppages_buffer, char, s->n_ppages*s->page_size);

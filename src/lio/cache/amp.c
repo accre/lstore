@@ -1472,7 +1472,7 @@ int amp_cache_destroy(lio_cache_t *c)
     cache_base_destroy(c);
 
     if (tbx_stack_count(cp->stack) > 0) {
-        log_printf(0, "cache_stack_size=%d\n", tbx_stack_count(cp->stack));
+        log_printf(0, "cache_stack_size=%d\n", tbx_stack_count(cp->stack)); tbx_log_flush();
 
         tbx_stack_move_to_top(cp->stack);
         n = 0;
@@ -1484,7 +1484,7 @@ int amp_cache_destroy(lio_cache_t *c)
             tbx_log_flush();
             tbx_stack_move_down(cp->stack);
         }
-        log_printf(0, "-------------------\n");
+        log_printf(0, "-------------------\n"); tbx_log_flush();
     }
 
     tbx_stack_free(cp->stack, 1);
