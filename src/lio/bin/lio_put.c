@@ -21,10 +21,12 @@
 #include <fcntl.h>
 
 #include <gop/gop.h>
+//#include <segment.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/assert_result.h>
+#include <tbx/direct_io.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
@@ -53,9 +55,11 @@ int local_put(lio_path_tuple_t *tuple, ex_off_t bufsize, char *buffer, ex_off_t 
         }
     }
 
-    status = gop_sync_exec_status(lio_cp_local2local_gop(stdin, fd, bufsize, buffer, -1, offset, len, truncate, NULL));
-
+    tbx_dio_init(fd);
+    status = gop_sync_exec_status(lio_cp_local2local_gop(stdin, fd, bufsize, buffer, -1, offset, len, truncate, NULL, 1));
+    tbx_dio_finish(fd, 0);
     fclose(fd);
+
     return(status.error_code);
 }
 

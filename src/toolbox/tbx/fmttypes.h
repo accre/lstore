@@ -31,6 +31,7 @@ extern "C" {
 #define LU   "%" PRIu64    //uint64_t
 #define OT   I64T          // ibp_off_t
 #define ST   "%zu"          // size_t
+#define SST  "%zd"          // ssize_t
 #define TT   "%" APR_TIME_T_FMT  // time format
 
 #ifdef __cplusplus

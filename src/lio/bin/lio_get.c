@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/assert_result.h>
+#include <tbx/direct_io.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
 #include <tbx/stdinarray_iter.h>
@@ -50,7 +51,9 @@ int local_get(lio_path_tuple_t *tuple, ex_off_t bufsize, char *buffer, ex_off_t 
         return(errno);
     }
 
-    status = gop_sync_exec_status(lio_cp_local2local_gop(fd, stdout, bufsize, buffer, offset, -1, len, 0, NULL));
+    tbx_dio_init(fd);
+    status = gop_sync_exec_status(lio_cp_local2local_gop(fd, stdout, bufsize, buffer, offset, -1, len, 0, NULL, 0));
+    tbx_dio_finish(fd, 0);
 
     fclose(fd);
     return(status.error_code);

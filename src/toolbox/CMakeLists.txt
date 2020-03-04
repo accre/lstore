@@ -32,6 +32,7 @@ set(TOOL_OBJS
     atomic_counter.c
     chksum.c
     constructor.c
+    direct_io.c
     dns_cache.c
     iniparse.c
     interval_skiplist.c
@@ -61,6 +62,7 @@ set(LSTORE_PROJECT_INCLUDES
     tbx/atomic_counter.h
     tbx/chksum.h
     tbx/constructor_wrapper.h
+    tbx/direct_io.h
     tbx/dns_cache.h
     tbx/fmttypes.h
     tbx/iniparse.h

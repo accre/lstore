@@ -22,6 +22,7 @@
 
 #include <apr_time.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/tp.h>
@@ -33,11 +34,13 @@
 #include <stdlib.h>
 #include <tbx/append_printf.h>
 #include <tbx/assert_result.h>
+#include <tbx/direct_io.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
+#include <unistd.h>
 
 #include "ds.h"
 #include "ex3.h"
@@ -359,7 +362,7 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
 
         //** Start the write
         file_start = apr_time_now();
-        got = fwrite(wb, 1, wlen, sc->fd);
+        got = tbx_dio_write(sc->fd, wb, wlen, -1);
         dt_file = apr_time_now() - file_start;
         dt_file /= (double)APR_USEC_PER_SEC;
         total += got;
@@ -490,15 +493,13 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
     log_printf(0, "FILE fd=%p bufsize=" XOT " rlen=" XOT " nbytes=" XOT "\n", sc->fd, bufsize, rlen, nbytes);
 
     loop_start = apr_time_now();
-    got = fread(rb, 1, rlen, sc->fd);
+    got = tbx_dio_read(sc->fd, rb, rlen, -1);
     dt_file = apr_time_now() - loop_start;
     dt_file /= (double)APR_USEC_PER_SEC;
 
-    if (got == 0) {
-        if (feof(sc->fd) == 0)  {
-            log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " rlen=" XOT " got=" XOT "\n", errno, segment_id(sc->dest), rlen, got);
-            status = gop_failure_status;
-        }
+    if (got == -1) {
+        log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " rlen=" XOT " got=" XOT "\n", errno, segment_id(sc->dest), rlen, got);
+        status = gop_failure_status;
         goto finished;
     }
     rlen = got;
@@ -534,17 +535,15 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
         }
         if (rlen > 0) {
             file_start = apr_time_now();
-            got = fread(rb, 1, rlen, sc->fd);
+            got = tbx_dio_read(sc->fd, rb, rlen, -1);
             dt_file = apr_time_now() - file_start;
             dt_file /= (double)APR_USEC_PER_SEC;
-            if (got == 0) {
-                if (feof(sc->fd) == 0)  {
-                    log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " got=" XOT " rlen=" XOT "\n", errno, segment_id(sc->dest), got, rlen);
-                    status = gop_failure_status;
-                    gop_waitall(gop);
-                    gop_free(gop, OP_DESTROY);
-                    goto finished;
-                }
+            if (got == -1) {
+                log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " got=" XOT " rlen=" XOT "\n", errno, segment_id(sc->dest), got, rlen);
+                status = gop_failure_status;
+                gop_waitall(gop);
+                gop_free(gop, OP_DESTROY);
+                goto finished;
             }
             rlen = got;
             rpos += rlen;

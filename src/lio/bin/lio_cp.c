@@ -171,7 +171,10 @@ int main(int argc, char **argv)
         }
         free(path);
 
-        //**We'll be using one of these structuures depending on the type of copy
+        //** In case I/O is being done on the local file system lets align the bufsize to whole pages
+        tbx_fudge_align_size(bufsize, 2*getpagesize());
+
+        //**We'll be using one of these structures depending on the type of copy
         cp->dest_tuple = dtuple;
         cp->dest_type = dtype;
         cp->path_regex = lio_os_path_glob2regex(cp->src_tuple.path);
@@ -276,6 +279,7 @@ int main(int argc, char **argv)
             cp->max_spawn = max_spawn;
             cp->bufsize = bufsize;
             cp->slow = slow;
+            cp->enable_local = enable_local;
 
             gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, lio_path_copy_op, cp, NULL, 1);
             gop_set_private(gop, cp);
