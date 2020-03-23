@@ -649,9 +649,10 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     //** Get the handles
     fh = fd->fh;
 
+    //** We don't decrement the ref count immediately to avoid another thread from thinking they are the only user
     lio_lock(lc);
-    fh->ref_count--;
-    if (fh->ref_count > 0) {  //** Somebody else has it open as well
+    if (fh->ref_count > 1) {  //** Somebody else has it open as well
+        fh->ref_count--;  //** Remove ourselves
         lio_unlock(lc);
         goto finished;
     }
@@ -694,6 +695,7 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
 
         //** Check again that no one else has opened the file
         lio_lock(lc);
+        fh->ref_count--;  //** Remove ourselves and destroy fh within the lock
         if (fh->ref_count > 0) {  //** Somebody else opened it while we were flushing buffers
             lio_unlock(lc);
             goto finished;
@@ -741,6 +743,7 @@ gop_op_status_t lio_myclose_fn(void *arg, int id)
     lio_lock(lc);  //** MAke sure no one else has opened the file while we were trying to close
     log_printf(1, "fname=%s ref_count=%d\n", fd->path, fh->ref_count);
 
+    fh->ref_count--;  //** Ready to tear down so go ahead and decrement and destroy the fh inside the lock if Ok
     if (fh->ref_count > 0) {  //** Somebody else opened it while we were flushing buffers
         lio_unlock(lc);
         goto finished;
@@ -1251,7 +1254,7 @@ finished:
 
 
 //***********************************************************************
-// lio_cp_local2lio - Copies a local file to LIO
+// lio_cp_local2local - Copies a local file to LIO
 //***********************************************************************
 
 gop_op_status_t lio_cp_local2local_fn(void *arg, int id)
@@ -1489,7 +1492,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
 
     if (cp->src_tuple.is_lio == 0) {  //** Source is a local file and dest is lio (or local if enabled)
         sffd = fopen(cp->src_tuple.path, "r");
-        tbx_dio_init(sffd);
+        if (sffd) tbx_dio_init(sffd);
 
         if (cp->dest_tuple.is_lio == 1) {
             info_printf(lio_ifd, 0, "copy %s %s@%s:%s\n", cp->src_tuple.path, an_cred_get_id(cp->dest_tuple.creds), cp->dest_tuple.lc->obj_name, cp->dest_tuple.path);
@@ -1513,7 +1516,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
             info_printf(lio_ifd, 0, "copy %s %s\n", cp->src_tuple.path, cp->dest_tuple.path);
             already_exists = lio_os_local_filetype(cp->dest_tuple.path); //** Track if the file was already there for cleanup
             dffd = fopen(cp->dest_tuple.path, "w");
-            tbx_dio_init(dffd);
+            if (dffd) tbx_dio_init(dffd);
 
             if ((sffd == NULL) || (dffd == NULL)) { //** Got an error
                 if (sffd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->src_tuple.path);
@@ -1523,7 +1526,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
                 tbx_malloc_align(buffer, getpagesize(), cp->bufsize);
                 status = gop_sync_exec_status(lio_cp_local2local_gop(sffd, dffd, cp->bufsize, buffer, 0, 0, -1, 1, cp->rw_hints, 0));
             }
-            if (dlfd != NULL) { tbx_dio_finish(dffd, 0); fclose(dffd); }
+            if (dffd != NULL) { tbx_dio_finish(dffd, 0); fclose(dffd); }
             if (sffd != NULL) { tbx_dio_finish(sffd, 0); fclose(sffd); }
 
         }
@@ -1533,7 +1536,7 @@ gop_op_status_t lio_file_copy_op(void *arg, int id)
 
         gop_sync_exec(lio_open_gop(cp->src_tuple.lc, cp->src_tuple.creds, cp->src_tuple.path, lio_fopen_flags("r"), NULL, &slfd, 60));
         dffd = fopen(cp->dest_tuple.path, "w");
-        tbx_dio_init(dffd);
+        if (dffd) tbx_dio_init(dffd);
 
         if ((dffd == NULL) || (slfd == NULL)) { //** Got an error
             if (slfd == NULL) info_printf(lio_ifd, 0, "ERROR: Failed opening source file!  path=%s\n", cp->src_tuple.path);
