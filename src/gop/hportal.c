@@ -713,6 +713,7 @@ void check_hportal_connections(gop_portal_context_t *hpc, hportal_t *hp)
     if (hpconn >= ideal) return;  //** Nothing to do so kick out
     if (ideal > hpc->max_conn) ideal = hpc->max_conn;
     extra = ideal - hpconn - hp->pending_conn;  //** These are the extra connections we want to make
+    if (extra <= 0) return;  //** No new connections needed so kick out
 
     n = (hpc->hp_running > 0) ? hpc->max_total_conn / hpc->hp_running : 1;  //** Get the average number of connections
     if (ideal > n) { //** Over the average so only make extra connections if we don't have to close something
