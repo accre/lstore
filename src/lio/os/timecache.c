@@ -1118,11 +1118,11 @@ finished:
 }
 
 //***********************************************************************
-// _ostc_cache_populate_prefix - Recursively populates the prefix with a
+// ostc_cache_populate_prefix - Recursively populates the prefix with a
 //    minimal set of cache entries.
 //***********************************************************************
 
-int _ostc_cache_populate_prefix(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int prefix_len)
+int ostc_cache_populate_prefix(lio_object_service_fn_t *os, lio_creds_t *creds, char *path, int prefix_len)
 {
     ostc_priv_t *ostc = (ostc_priv_t *)os->priv;
     tbx_stack_t tree;
@@ -1139,7 +1139,9 @@ int _ostc_cache_populate_prefix(lio_object_service_fn_t *os, lio_creds_t *creds,
     if (len == 1) return(0);  //** Nothing to do.  Just a '/'
 
     tbx_stack_init(&tree);
+    OSTC_LOCK(ostc);
     err = _ostc_lio_cache_tree_walk(os, path, &tree, NULL, 0, OSTC_MAX_RECURSE);
+    OSTC_UNLOCK(ostc);
     tbx_stack_empty(&tree, 0);
     if (err <= 0)  return(err);
 
@@ -1188,7 +1190,7 @@ int _ostc_cache_populate_prefix(lio_object_service_fn_t *os, lio_creds_t *creds,
         ostc_attr_cacheprep_copy(&cp, (void **)val_array, v_size);
         if (end < (len-1)) { //** Recurse and add the next layer
             log_printf(1, "recursing object=%s\n", path);
-            err = _ostc_cache_populate_prefix(os, creds, path, end);
+            err = ostc_cache_populate_prefix(os, creds, path, end);
         }
     }
 
@@ -1690,7 +1692,7 @@ gop_op_status_t ostc_get_attrs_fn(void *arg, int tid)
     }
     if (status.op_status == OP_STATE_SUCCESS) return(status);
 
-    _ostc_cache_populate_prefix(ma->os, ma->creds, ma->fd->fname, 0);
+    ostc_cache_populate_prefix(ma->os, ma->creds, ma->fd->fname, 0);
 
     ostc_attr_cacheprep_setup(&cp, ma->n, ma->key, ma->val, ma->v_size, 1);
 
