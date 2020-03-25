@@ -128,7 +128,6 @@ mode_t ftype_lio2fuse(int ftype)
     } else if (ftype & OS_OBJECT_DIR_FLAG) {
         mode = S_IFDIR | 0755;
     } else {
-//     mode = S_IFREG | 0444;
         mode = S_IFREG | 0666;  //** Make it so that everything has RW access
     }
 
@@ -140,7 +139,7 @@ mode_t ftype_lio2fuse(int ftype)
 //   NOTE: All the val[*] strings are free'ed!
 //*************************************************************************
 
-void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char **val, int *v_size)
+void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char **val, int *v_size, int get_lock)
 {
     int i, n, readlink;
     lio_fuse_open_file_t *fop;
@@ -186,18 +185,20 @@ void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char 
 
     //** Size
     ino = 0;
-    lfs_lock(lfs);
+    len = -1;
+    fh = NULL;
+    if (get_lock == 1) lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
-    if (fop != NULL) ino = fop->sid;
-    lfs_unlock(lfs);
-
-    len = 0;
-    if (val[3] != NULL) sscanf(val[3], XOT, &len);
-    if (ino != 0) { //** Got an open file
-        lio_lock(lfs->lc);
+    if (fop != NULL) {
+        ino = fop->sid;
         fh = _lio_get_file_handle(lfs->lc, ino);
         if (fh) len = segment_size(fh->seg);
-        lio_unlock(lfs->lc);
+    }
+    if (get_lock == 1) lfs_unlock(lfs);
+
+    if (len == -1) {
+        len = 0;
+        if (val[3] != NULL) sscanf(val[3], XOT, &len);
     }
 
     stat->st_size = (n & OS_OBJECT_SYMLINK_FLAG) ? readlink : len;
@@ -251,13 +252,18 @@ int lfs_stat(const char *fname, struct stat *stat, struct fuse_file_info *fi)
     log_printf(1, "fname=%s\n", fname);
     tbx_log_flush();
 
+    //** The whole remote fetch and merging with open files is locked to
+    //** keep quickly successive stat calls to not get stale information
+    lfs_lock(lfs);
     for (i=0; i<_inode_key_size; i++) v_size[i] = -lfs->lc->max_attr;
     err = lio_get_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, _inode_keys, (void **)val, v_size, _inode_key_size);
 
     if (err != OP_STATE_SUCCESS) {
+        lfs_unlock(lfs);
         return(-ENOENT);
     }
-    _lfs_parse_stat_vals(lfs, (char *)fname, stat, val, v_size);
+    _lfs_parse_stat_vals(lfs, (char *)fname, stat, val, v_size, 0);
+    lfs_unlock(lfs);
 
     log_printf(1, "END fname=%s err=%d\n", fname, err);
     tbx_log_flush();
@@ -446,7 +452,7 @@ LFS_READDIR()
 
         tbx_type_malloc(de, lfs_dir_entry_t, 1);
         de->dentry = strdup(fname+prefix_len+1);
-        _lfs_parse_stat_vals(dit->lfs, fname, &(de->stat), dit->val, dit->v_size);
+        _lfs_parse_stat_vals(dit->lfs, fname, &(de->stat), dit->val, dit->v_size, 1);
         free(fname);
         log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=" XOT "\n", de->dentry, ftype, prefix_len, de->stat.st_ino, off);
 
@@ -650,6 +656,8 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
 
     remove_on_close = 0;
 
+    //** We lock overthe whole close process to make sure an immediate stat call 
+    //** doesn't get stale information.
     lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
     if (fop) {
@@ -661,7 +669,6 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
             free(fop);
         }
     }
-    lfs_unlock(lfs);
 
     //** See if we need to remove it
     if (remove_on_close == 1) {
@@ -677,6 +684,7 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
     }
 
     err = gop_sync_exec(lio_close_gop(fd)); // ** Close it but keep track of the error
+    lfs_unlock(lfs);
 
     if (err != OP_STATE_SUCCESS) {
         log_printf(0, "Failed closing file!  path=%s\n", fname);
@@ -1337,21 +1345,26 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
         }
     }
 
-    if (v_size < 0) v_size = 0;  //** No attribute
-
+    err = 0;
+    if (v_size < 0) {
+        v_size = 0;  //** No attribute
+        err = -ENODATA;
+    }
+    
     if (size == 0) {
-        log_printf(1, "SIZE bpos=%d buf=%s\n", v_size, val);
+        log_printf(1, "SIZE bpos=%d buf=%.*s\n", v_size, v_size, val);
     } else if ((int)size >= v_size) {
-        log_printf(1, "FULL bpos=%d buf=%s\n",v_size, val);
+        log_printf(1, "FULL bpos=%d buf=%.*s\n",v_size, v_size, val);
         memcpy(buf, val, v_size);
     } else {
-        log_printf(1, "ERANGE bpos=%d buf=%s\n", v_size, val);
+        log_printf(1, "ERANGE bpos=%d buf=%.*s\n", v_size, v_size, val);
     }
 
     if (val != NULL) free(val);
-    return(v_size);
+    return((v_size == 0) ? err : v_size);
 }
 #endif //HAVE_XATTR
+
 //*****************************************************************
 // lfs_setxattr - Sets a extended attribute
 //*****************************************************************
@@ -1367,7 +1380,7 @@ int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t s
     int v_size, err;
 
     v_size= size;
-    log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
+    log_printf(1, "fname=%s flags=%d size=%zu attr_name=%s\n", fname, flags, size, name);
     tbx_log_flush();
 
     if (flags != 0) { //** Got an XATTR_CREATE/XATTR_REPLACE
