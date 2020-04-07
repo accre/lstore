@@ -57,6 +57,7 @@ extern "C" {
 #define DS_INQUIRE_TOTAL 3
 
 #define ds_type(ds) (ds)->type
+#define ds_print_running_config(ds, fd, psh) (ds)->print_running_config(ds, fd, psh)
 #define ds_destroy_service(ds) (ds)->destroy_service(ds)
 #define ds_cap_auto_warm(ds, cs) (ds)->cap_auto_warm(ds, cs)
 #define ds_cap_stop_warm(ds, cs) (ds)->cap_stop_warm(ds, cs)

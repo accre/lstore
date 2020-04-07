@@ -56,6 +56,11 @@ endif(WANT_DEBUG)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -DLINUX=2 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
 
+# Add the FUSE3 flag if found
+if (HAS_FUSE3)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAS_FUSE3")
+endif
+
 # Find and link universal deps
 find_package(OpenSSL REQUIRED)
 find_package(APR-ACCRE REQUIRED)

@@ -27,7 +27,10 @@ if(NOT USE_SUPERBUILD)
     find_package(GOP REQUIRED)
     find_package(IBP REQUIRED)
     find_package(ZMQ REQUIRED)
-    find_package(FUSE REQUIRED)
+    find_package(FUSE3)
+    if (NOT HAS_FUSE3)
+        find_package(FUSE REQUIRED)
+    endif()
     find_package(LevelDB REQUIRED)
     include_directories(
         ${JERASURE_INCLUDE_DIR} ${TOOLBOX_INCLUDE_DIR} ${GOP_INCLUDE_DIR}
@@ -41,6 +44,11 @@ if(NOT USE_SUPERBUILD)
 else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FILE_OFFSET_BITS=64")
 endif()
+
+if (HAS_FUSE3)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAS_FUSE3")
+endif()
+
 set(LSTORE_LIBS toolbox
                 gop
                 ibp
@@ -52,6 +60,7 @@ set(LSTORE_LIBS toolbox
                 ${FUSE_LIBRARY}
                 ${JERASURE_LIBRARY}
                 ${LEVELDB_LIBRARY}
+                dl
                 )
 set(LSTORE_INCLUDE_SYSTEM ${APR_INCLUDE_DIR}
                     ${APRUTIL_INCLUDE_DIR}
@@ -69,6 +78,7 @@ set(LSTORE_PROJECT_OBJS
 		blacklist.c
 		cache/amp.c
 		cache/base.c
+		cache/direct.c
 		cache/round_robin.c
 		constructor.c
 		cred_default.c
@@ -81,6 +91,7 @@ set(LSTORE_PROJECT_OBJS
 		ex3/header.c
 		ex3/id.c
 		ex3/service.c
+		lio_base_rw.c
 		lio_config.c
 		lio_core_io.c
 		lio_core_misc.c
@@ -95,11 +106,13 @@ set(LSTORE_PROJECT_OBJS
 		os/timecache.c
 		osaz/fake.c
         raid4.c
+        remote_config.c
 		rs/query_base.c
 		rs/remote_client.c
 		rs/remote_server.c
 		rs/simple.c
 		rs/space.c
+		rw_test.c
 		segment.c
 		segment/cache.c
 		segment/dynfile.c
@@ -108,7 +121,6 @@ set(LSTORE_PROJECT_OBJS
 		segment/linear.c
 		segment/log.c
 		segment/lun.c
-		segment/rw_test.c
 		service_manager.c
 		trace.c
 		trace_replay.c

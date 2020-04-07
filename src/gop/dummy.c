@@ -41,35 +41,13 @@ static gop_portal_fn_t gop_dummy_portal = {
     .submit = gop_dummy_submit_op
 };
 
-static gop_portal_context_t gop_dummy_pc = {
-    .lock = NULL,
-    .table = NULL,
-    .pool = NULL,
-    .running_threads = 1,
-    .max_connections = 1,
-    .min_threads = 1,
-    .max_threads = 1,
-    .max_wait = 1,
-    .max_workload = 1,
-    .compact_interval = 1,
-    .wait_stable_time = 1,
-    .abort_conn_attempts = 1,
-    .check_connection_interval = 1,
-    .min_idle = 1,
-    .max_retry = 0,
-    .count = 0,
-    .next_check = 0,
-    .dt = 0,
-    .arg = NULL,
-    .fn = &gop_dummy_portal
-};
-
 int gd_shutdown = 0;
 apr_thread_t *gd_thread = NULL;
 apr_pool_t *gd_pool = NULL;
 apr_thread_mutex_t *gd_lock = NULL;
 apr_thread_cond_t *gd_cond = NULL;
 tbx_stack_t *gd_stack = NULL;
+static gop_portal_context_t *gop_dummy_pc = NULL;
 
 
 //***********************************************************************
@@ -112,6 +90,8 @@ void gop_dummy_init()
     assert_result(apr_thread_cond_create(&gd_cond, gd_pool), APR_SUCCESS);
     gd_stack = tbx_stack_new();
 
+    gop_dummy_pc = gop_hp_context_create(&gop_dummy_portal, "DUMMY");  //** Really just used for the submit
+
     //** and launch the thread
     tbx_thread_create_assert(&gd_thread, NULL, gd_thread_func, NULL, gd_pool);
 }
@@ -138,6 +118,7 @@ void gop_dummy_destroy()
     apr_thread_mutex_destroy(gd_lock);
     apr_thread_cond_destroy(gd_cond);
     apr_pool_destroy(gd_pool);
+    gop_hp_context_destroy(gop_dummy_pc);
 }
 
 //***********************************************************************
@@ -182,7 +163,7 @@ gop_op_generic_t *gop_dummy(gop_op_status_t state)
     tbx_log_flush();
 
     gop_init(gop);
-    gop->base.pc = &gop_dummy_pc;
+    gop->base.pc = gop_dummy_pc;
     gop->type = Q_TYPE_OPERATION;
     gop->base.free = gop_dummy_free;
     gop->base.status = state;

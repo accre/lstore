@@ -26,6 +26,7 @@ extern "C" {
 
 // Functions
 TBX_API int tbx_append_printf(char *buffer, int *used, int nbytes, const char *fmt, ...);
+TBX_API int tbx_alloc_append_printf(char **buffer, int *used, int *nbytes, const char *fmt, ...);
 
 #ifdef __cplusplus
 }

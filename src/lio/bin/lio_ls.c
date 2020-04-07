@@ -153,7 +153,7 @@ int main(int argc, char **argv)
         lio_print_path_options(stdout);
         printf("\n");
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-        printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
+        lio_print_object_type_options(stdout, obj_types);
         printf("    -ns                - Don't sort the output\n");
         return(1);
     }
@@ -199,6 +199,7 @@ int main(int argc, char **argv)
     }
 
     fcount = 0;
+    ftype = 0;  //** Make old GCC version happy
 
     q = gop_opque_new();
     table = tbx_list_create(0, &tbx_list_string_compare, NULL, tbx_list_no_key_free, tbx_list_no_data_free);
@@ -266,6 +267,13 @@ int main(int argc, char **argv)
             }
         }
 
+        //** Wait for any readlinks to complete before releasing the tuple
+        err = (gop_opque_task_count(q) > 0) ? opque_waitall(q) : OP_STATE_SUCCESS;
+        if (err != OP_STATE_SUCCESS) {
+            fprintf(stderr, "ERROR: Failed with readlink operation!\n");
+            return_code = EIO;
+        }
+
         lio_destroy_object_iter(tuple.lc, it);
 
         lio_path_release(&tuple);
@@ -279,10 +287,9 @@ int main(int argc, char **argv)
         }
     }
 
-    //** Wait for any readlinks to complete
-    err = (gop_opque_task_count(q) > 0) ? opque_waitall(q) : OP_STATE_SUCCESS;
-    if (err != OP_STATE_SUCCESS) {
-        info_printf(lio_ifd, 0, "ERROR: Failed with readlink operation!\n");
+    //** Check that we didn't abort
+    if (ftype != 0) {
+        fprintf(stderr, "ERROR: Retreiving object!\n");
         return_code = EIO;
     }
 

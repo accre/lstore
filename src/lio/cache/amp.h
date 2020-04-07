@@ -31,6 +31,12 @@ extern "C" {
 
 #define CACHE_TYPE_AMP "amp"
 
+typedef struct lio_amp_page_stream_t lio_amp_page_stream_t;
+typedef struct lio_amp_page_wait_t lio_amp_page_wait_t;
+typedef struct lio_amp_stream_table_t lio_amp_stream_table_t;
+typedef struct lio_cache_amp_t lio_cache_amp_t;
+typedef struct lio_page_amp_t lio_page_amp_t;
+
 lio_cache_t *amp_cache_create(void *arg, data_attr_t *da, int timeout);
 lio_cache_t *amp_cache_load(void *arg, tbx_inip_file_t *ifd, char *section, data_attr_t *da, int timeout);
 
@@ -61,7 +67,9 @@ struct lio_amp_stream_table_t {
 };
 
 struct lio_cache_amp_t {
+    char *section;
     tbx_stack_t *stack;
+    tbx_stack_t *free_pages;
     tbx_stack_t *waiting_stack;
     tbx_stack_t *pending_free_tasks;
     tbx_pc_t *free_pending_tables;

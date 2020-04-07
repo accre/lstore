@@ -43,6 +43,7 @@ struct lio_rss_rid_entry_t {
     tbx_list_t *attr;
     int  status;
     int  slot;
+    int too_full;
     ex_off_t space_total;
     ex_off_t space_used;
     ex_off_t space_free;
@@ -56,6 +57,7 @@ struct lio_rss_check_entry_t {
 };
 
 struct lio_rs_simple_priv_t {
+    char *section;
     tbx_list_t *rid_table;
     lio_rss_rid_entry_t **random_array;
     lio_data_service_fn_t *ds;
@@ -68,6 +70,8 @@ struct lio_rs_simple_priv_t {
     apr_pool_t *mpool;
     apr_hash_t *mapping_updates;
     apr_hash_t *rid_mapping;
+    double over_avg_fraction;
+    double avg_fraction;
     time_t modify_time;
     time_t current_check;
     char *fname;

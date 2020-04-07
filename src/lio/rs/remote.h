@@ -48,6 +48,9 @@ lio_resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *f
 
 
 struct lio_rs_remote_client_priv_t {
+    char *rrs_test_section;
+    char *section;
+    char *local_child_section;
     lio_data_service_fn_t *ds;
     data_attr_t *da;
     apr_thread_mutex_t *lock;
@@ -63,6 +66,7 @@ struct lio_rs_remote_client_priv_t {
     int dynamic_mapping;
     int unique_rids;
     int check_interval;
+    int delete_target;
     lio_resource_service_fn_t *rrs_test;  //** This is only used for testing by lauching the "remote" RS internally
     lio_resource_service_fn_t *rs_child;
     gop_mq_context_t *mqc;            //** Portal for connecting to he remote RS server
@@ -73,6 +77,8 @@ struct lio_rs_remote_client_priv_t {
 
 struct lio_rs_remote_server_priv_t {
     int shutdown;
+    char *section;
+    char *rs_local_section;
     apr_thread_mutex_t *lock;
     apr_thread_cond_t *cond;
     apr_thread_t *monitor_thread;

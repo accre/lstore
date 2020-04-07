@@ -95,8 +95,11 @@ int main(int argc, char **argv)
     start_index++;
 
     fd = fopen(fname, "r");
-   FATAL_UNLESS(fd != NULL);
-    fgets(ppbuf, sizeof(ppbuf), fd);
+    FATAL_UNLESS(fd != NULL);
+    if (fgets(ppbuf, sizeof(ppbuf), fd) == NULL) {
+        printf("Unable to read file.\n");
+        return(-1);
+    }
     if ((p = index(ppbuf, '\n')) != NULL) *p = 0;  //** Remove the \n if needed
     n_rcap = tbx_stk_string_get_integer(ppbuf);
 
@@ -114,7 +117,10 @@ int main(int argc, char **argv)
     for (i=0; i<n_rcap; i++) {
         tbx_type_malloc(buffer[i], char, len+1);
         tbx_type_malloc(rcap[i], char, 256);
-        fgets(rcap[i], 256, fd);
+        if (fgets(rcap[i], 256, fd) == NULL) {
+            printf("Unable to read cap.\n");
+            return(-1);
+        }
         if ((p = index(rcap[i], '\n')) != NULL) *p = '\0';  //** Remove the \n if needed
 
         tbx_type_malloc(iov[i], tbx_iovec_t, n_iov);

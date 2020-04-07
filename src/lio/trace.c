@@ -163,7 +163,7 @@ lio_trace_t *trace_load(lio_service_manager_t *exs, lio_exnode_t *tex, data_attr
     file = trace->files;
     for (i=0; i<n_ops; i++) {
         op = &(trace->ops[i]);
-        fgets(buffer, 1024, fd);
+        if (fgets(buffer, 1024, fd) == NULL) abort();
         sscanf(tbx_stk_string_token(buffer, " ,", &bstate, &fin), "%d", &(op->fd));
         sscanf(tbx_stk_string_token(NULL, " ,", &bstate, &fin), XOT, &(op->offset));
         sscanf(tbx_stk_string_token(NULL, " ,", &bstate, &fin), XOT, &(op->len));

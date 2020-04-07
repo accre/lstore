@@ -557,7 +557,7 @@ int et_decode(lio_erasure_plan_t *plan, long long int fsize, const char *fname, 
         for (i=0; i<plan->parity_strips; i++) {
             if (missing_parity[i] == 0) {
                 fseek(fd_parity, bpos, SEEK_SET);
-                fread(parity[i], 1, bsize, fd_parity);
+                if (fread(parity[i], 1, bsize, fd_parity) != (size_t)bsize) abort();
             }
             bpos = bpos + plan->strip_size;
         }
@@ -570,7 +570,7 @@ int et_decode(lio_erasure_plan_t *plan, long long int fsize, const char *fname, 
         for (i=0; i<plan->data_strips-1; i++) {  //** Skip the last block
             if (missing_data[i] == 1) {
                 fseek(fd_file, bpos, SEEK_SET);
-                fwrite(data[i], 1, bsize, fd_file);
+                if (fwrite(data[i], 1, bsize, fd_file) != (size_t)bsize) abort();
             }
             bpos = bpos + plan->strip_size;
         }
@@ -801,6 +801,8 @@ lio_erasure_plan_t *et_generate_plan(long long int file_size, int method,
             printf("et_generate_plan: parity_strips must equal 2 for %s.  Specified parity_strips=%d\n", JE_method[method], parity_strips);
             return(NULL);
         }
+        //The line below flags the compiler to ignore the fall through.  Raid6 is just RS(n,2)
+        //@fallthrough@
     case REED_SOL_VAN:
     case CAUCHY_ORIG:
     case CAUCHY_GOOD:

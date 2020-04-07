@@ -1,0 +1,2 @@
+# This is site specific container information which could hae passwords and private configs
+site/*

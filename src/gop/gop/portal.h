@@ -44,6 +44,9 @@
 extern "C" {
 #endif
 
+//Separator between the host and the port
+#define HP_HOSTPORT_SEPARATOR "|"
+
 // Typedefs
 typedef void *(*gop_portal_dup_fn_t)(void *connect_context);  //** Duplicates a ccon
 typedef void (*gop_portal_destroy_fn_t)(void *connect_context);
@@ -53,7 +56,6 @@ typedef void (*gop_portal_sort_fn_t)(void *arg, gop_opque_t *q);        //** opt
 typedef void (*gop_portal_submit_fn_t)(void *arg, gop_op_generic_t *op);
 typedef void (*gop_portal_exec_fn_t)(void *arg, gop_op_generic_t *op);   //** optional
 
-// Exported types. To be obscured.
 struct gop_portal_fn_t {
     gop_portal_dup_fn_t dup_connect_context;
     gop_portal_destroy_fn_t destroy_connect_context;
@@ -64,34 +66,47 @@ struct gop_portal_fn_t {
     gop_portal_exec_fn_t sync_exec;
 };
 
-struct gop_portal_context_t {             //** Handle for maintaining all the ecopy connections
-    apr_thread_mutex_t *lock;
-    apr_hash_t *table;         //** Table containing the depot_portal structs
-    apr_pool_t *pool;          //** Memory pool for hash table
-    apr_time_t min_idle;       //** Idle time before closing connection
-    tbx_atomic_unit32_t running_threads;       //** currently running # of connections
-    int max_connections;       //** Max aggregate allowed number of threads
-    int min_threads;           //** Max allowed number of threads/host
-    int max_threads;           //** Max allowed number of threads/host
-    apr_time_t dt_connect;     //** Max time to wait when making a connection to a host
-    int max_wait;              //** Max time to wait on a retry_dead_socket
-    int64_t max_workload;      //** Max allowed workload before spawning another connection
-    int compact_interval;      //** Interval between garbage collections calls
-    int wait_stable_time;      //** time to wait before adding connections for unstable hosts
-    int abort_conn_attempts;   //** If this many failed connection requests occur in a row we abort
-    int check_connection_interval; //** Max time to wait for a thread to check for a close
-    int max_retry;             //** Default max number of times to retry an op
-    int count;                 //** Internal Counter
-    apr_time_t   next_check;       //** Time for next compact_dportal call
-    tbx_ns_timeout_t dt;          //** Default wait time
-    void *arg;
-    gop_portal_fn_t *fn;       //** Actual implementaion for application
-};
-
+struct gop_portal_context_t;
+typedef struct gop_host_portal_t gop_host_portal_t;
 
 // Functions
+GOP_API int gop_hp_que_op_submit(gop_portal_context_t *hpc, gop_op_generic_t *op);
+GOP_API gop_portal_context_t *gop_hp_context_create(gop_portal_fn_t *hpi, char *name);
+GOP_API void gop_hp_context_destroy(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_load(gop_portal_context_t *hpc, tbx_inip_file_t *fd, char *section);
+GOP_API gop_portal_fn_t *gop_hp_fn_get(gop_portal_context_t *hpc);
+GOP_API void gop_hp_fn_set(gop_portal_context_t *hpc, gop_portal_fn_t *fn);
+GOP_API int gop_hp_que_op_submit(gop_portal_context_t *hpc, gop_op_generic_t *op);
+GOP_API void gop_hp_shutdown(gop_portal_context_t *hpc);
+GOP_API int gop_hp_submit(gop_host_portal_t *dp, gop_op_generic_t *op, bool addtotop, bool release_master);
+GOP_API void gop_hpc_print_running_config(gop_portal_context_t *hpc, FILE *fd, int print_section_heading);
+
+// tunable accessors
+GOP_API void gop_hpc_dead_dt_set(gop_portal_context_t *hpc, apr_time_t dt);
+GOP_API apr_time_t gop_hpct_dead_dt_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_dead_check_set(gop_portal_context_t *hpc, apr_time_t dt);
+GOP_API apr_time_t gop_hpc_dead_check_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_max_idle_set(gop_portal_context_t *hpc, apr_time_t dt);
+GOP_API apr_time_t gop_hpc_max_idle_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_wait_stable_set(gop_portal_context_t *hpc, apr_time_t dt);
+GOP_API apr_time_t gop_hpc_wait_stable_get(gop_portal_context_t *hpc);
+
+GOP_API void gop_hpc_max_total_conn_set(gop_portal_context_t *hpc, int n);
+GOP_API int gop_hpc_max_total_conn_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_min_host_conn_set(gop_portal_context_t *hpc, int n);
+GOP_API int gop_hpc_min_host_conn_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_max_host_conn_set(gop_portal_context_t *hpc, int n);
+GOP_API int gop_hpc_max_host_conn_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_max_workload_set(gop_portal_context_t *hpc, int64_t n);
+GOP_API int64_t gop_hpc_max_workload_get(gop_portal_context_t *hpc);
+
+GOP_API void gop_hpc_min_bw_fraction_set(gop_portal_context_t *hpc, double d);
+GOP_API double gop_hpc_min_bw_fraction_get(gop_portal_context_t *hpc);
+GOP_API void gop_hpc_mex_latest_fraction_set(gop_portal_context_t *hpc, double d);
+GOP_API double gop_hpc_mix_latest_fraction_get(gop_portal_context_t *hpc);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ^ ACCRE_GOP_PORTAL_H_INCLUDED ^ */ 
+#endif /* ^ ACCRE_GOP_PORTAL_H_INCLUDED ^ */

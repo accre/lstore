@@ -32,19 +32,9 @@ extern "C" {
 
 # define CMD_BUF_SIZE      1024
 
-
-
 /*********************************************************
  * Data sturcture definition.
  *********************************************************/
-
-/*
- * Definition of the timer structure
- */
-
-
-
-
 
 struct ibp_ridlist_t {  //** RID list structure
     int n;

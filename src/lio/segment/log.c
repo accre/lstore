@@ -1043,7 +1043,7 @@ ex_off_t seglog_size(lio_segment_t *seg)
 // seglog_block_size - Returns the blocks size which is always 1
 //***********************************************************************
 
-ex_off_t seglog_block_size(lio_segment_t *seg)
+ex_off_t seglog_block_size(lio_segment_t *seg, int btype)
 {
 //  lio_seglog_priv_t *s = (lio_seglog_priv_t *)seg->priv;
 

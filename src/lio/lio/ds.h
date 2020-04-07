@@ -42,6 +42,7 @@ typedef void data_probe_t;
 typedef void data_inquire_t;
 
 typedef void (*lio_ds_destroy_service_fn_t)(lio_data_service_fn_t *);
+typedef void (*lio_ds_print_running_config_fn_t)(lio_data_service_fn_t *ds, FILE *fd, int print_section_heading);
 typedef void (*lio_ds_translate_cap_set_fn_t)(lio_data_service_fn_t *ds, char *rid_key, char *ds_key, data_cap_set_t *cs);
 typedef data_cap_set_t *(*lio_ds_new_cap_set_fn_t)(lio_data_service_fn_t *);
 typedef void *(*lio_ds_cap_auto_warm_fn_t)(lio_data_service_fn_t *, data_cap_set_t *dcs);
@@ -91,6 +92,7 @@ struct lio_data_service_fn_t {
     void *priv;
     char *type;
     lio_ds_destroy_service_fn_t destroy_service;
+    lio_ds_print_running_config_fn_t print_running_config;
     lio_ds_translate_cap_set_fn_t translate_cap_set;
     lio_ds_new_cap_set_fn_t new_cap_set;
     lio_ds_cap_auto_warm_fn_t cap_auto_warm;

@@ -94,7 +94,7 @@ struct lio_cache_partial_page_t {
     int flags;
 };
 
-struct lio_cache_lio_segment_t {
+struct lio_cache_segment_t {
     lio_cache_t *c;
     void *cache_priv;
     lio_segment_t *child_seg;
@@ -106,14 +106,18 @@ struct lio_cache_lio_segment_t {
     apr_thread_cond_t  *ppages_cond;
     tbx_stack_t *flush_stack;
     tbx_stack_t *ppages_unused;
+    tbx_stack_t *dio_pending;
+    tbx_stack_t *dio_execing;
     char *qname;
     lio_cache_partial_page_t *ppage;
     char *ppages_buffer;
+    int direct_io;
     int cache_check_in_progress;
     int flushing_count;
     int n_ppages;
     int ppages_used;
     int ppages_flushing;
+    ex_off_t priority_counter;
     ex_off_t ppage_max;
     ex_off_t page_size;
     ex_off_t child_last_page;
@@ -139,11 +143,14 @@ struct lio_cache_page_t {
     int current_index;
 };
 
+typedef struct lio_page_handle_t lio_page_handle_t;
 struct lio_page_handle_t {
     lio_cache_page_t *p;
     lio_data_page_t *data;
 };
 
+
+typedef struct lio_page_table_t lio_page_table_t;
 struct lio_page_table_t {
     tbx_stack_t *stack;
     lio_segment_t *seg;
@@ -154,6 +161,7 @@ struct lio_page_table_t {
 
 struct lio_cache_fn_t {
     void *priv;
+    void (*print_running_config)(lio_cache_t *c, FILE *fd, int print_section_heading);
     void (*adding_segment)(lio_cache_t *c, lio_segment_t *seg);
     void (*removing_segment)(lio_cache_t *c, lio_segment_t *seg);
     lio_cache_page_t *(*create_empty_page)(lio_cache_t *c, lio_segment_t *seg, int doblock);
@@ -174,25 +182,29 @@ struct lio_cache_t {
     tbx_list_t *segments;
     tbx_pc_t *cond_coop;
     data_attr_t *da;
+    char *type;
     ex_off_t default_page_size;
     lio_cache_stats_get_t stats;
     ex_off_t max_fetch_size;
     ex_off_t write_temp_overflow_size;
     ex_off_t write_temp_overflow_used;
+    ex_off_t min_direct;
     double   max_fetch_fraction;
     double   write_temp_overflow_fraction;
+    int coredump_pages;
     int n_ppages;
     int timeout;
     int  shutdown_request;
 };
 
-extern tbx_atomic_unit32_t _cache_count;
+extern tbx_atomic_int_t _cache_count;
 
 #define unique_cache_id() tbx_atomic_inc(_cache_count);
 #define cache_lock(c) apr_thread_mutex_lock((c)->lock)
 #define cache_unlock(c) apr_thread_mutex_unlock((c)->lock)
 #define cache_get_handle(c) (c)->fn.get_handle(c)
 #define cache_destroy(c) (c)->fn.destroy(c)
+#define cache_print_running_config(c, fd, psh) (c)->fn.print_running_config(c, fd, psh)
 
 lio_cache_t *cache_base_handle(lio_cache_t *);
 void cache_base_destroy(lio_cache_t *c);

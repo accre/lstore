@@ -48,6 +48,7 @@ typedef struct {
     unsigned char addr[DNS_ADDR_MAX];
     char ip_addr[256];
     tbx_dns_ip_t family;
+    apr_time_t expire_time;
 } DNS_entry_t;
 
 typedef struct {
@@ -82,15 +83,23 @@ void wipe_entries(DNS_cache_t *cache)
 
 int hostname2ip(const char *name, char *ip_bytes, char *ip_text, int ip_text_size)
 {
-    struct hostent *he;
-    struct in_addr **al;
+    struct addrinfo hints;
+    struct addrinfo *result;
+    int err;
 
-    if ((he = gethostbyname(name)) == NULL) return(-1);
+    memset(&hints, 0, sizeof(struct addrinfo));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_CANONNAME;
 
-    al = (struct in_addr **)he->h_addr_list;
-    if (ip_bytes) memcpy(ip_bytes, al[0], 4);
-    if (ip_text) inet_ntop(AF_INET, al[0], ip_text, ip_text_size);
+    if ((err = getaddrinfo(name, NULL, &hints, &result)) != 0) {
+        fprintf(stderr, "getaddrinfo: host:%s error:%s\n", name, gai_strerror(err));
+        return(-1);
+    }
+    if (ip_bytes) memcpy(ip_bytes, &((struct sockaddr_in *)result->ai_addr)->sin_addr, 4);
+    if (ip_text) inet_ntop(AF_INET, &((struct sockaddr_in *)result->ai_addr)->sin_addr, ip_text, ip_text_size);
 
+    freeaddrinfo(result);
     return(0);
 }
 
@@ -104,7 +113,7 @@ int hostname2ip(const char *name, char *ip_bytes, char *ip_text, int ip_text_siz
 int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
 {
     char ip_buffer[256];
-    int err;
+    int err, refresh;
     DNS_entry_t *h;
     struct in_addr sa;
 
@@ -113,9 +122,9 @@ int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
 
     if (name[0] == '\0') return(1);  //** Return early if name is NULL
 
-    apr_thread_mutex_lock(_cache->lock);
+    refresh = 0;
 
-    if ((apr_time_now() > _cache->restart_time) || (apr_hash_count(_cache->table) > _cache->size)) wipe_entries(_cache);
+    apr_thread_mutex_lock(_cache->lock);
 
     h = (DNS_entry_t *)apr_hash_get(_cache->table, name, APR_HASH_KEY_STRING);
 
@@ -124,17 +133,33 @@ int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
             strcpy(ip_addr, h->ip_addr);
         if (byte_addr != NULL)
             memcpy(byte_addr, h->addr, DNS_ADDR_MAX);
+
+        if (h->expire_time < apr_time_now()) {  //** Got an entry. Try and refresh it
+            refresh = 1;
+            goto refresh_entry;
+        }
         apr_thread_mutex_unlock(_cache->lock);
         return(0);
     }
+
+refresh_entry:  //** In case we need to refresh the entry
 
     //** If we made it here that means we have to look it up
     err = hostname2ip(name, (char *)&sa, ip_buffer, sizeof(ip_buffer));
     if (err != 0) {
         apr_thread_mutex_unlock(_cache->lock);
-        return(-1);
+        if (h) {
+            return(0);  //** Got an expired entry so use it
+        } else {        //** Nothing to present
+            return(-1);
+        }
     }
-    h = (DNS_entry_t *)apr_palloc(_cache->mpool, sizeof(DNS_entry_t)); //** This is created withthe pool for easy cleanup
+
+    //** Create the new entry if needed
+    if (!h) {
+        if (apr_hash_count(_cache->table) > _cache->size) wipe_entries(_cache);  //** Crude way to cap the size of the table
+        h = (DNS_entry_t *)apr_palloc(_cache->mpool, sizeof(DNS_entry_t));       //** This is created withthe pool for easy cleanup
+    }
     memset(h, 0, sizeof(DNS_entry_t));
 
     strncpy(h->name, name, sizeof(h->name));
@@ -142,11 +167,12 @@ int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
     h->family = DNS_IPV4;
     memcpy(h->addr, &sa, sizeof(sa));
     strcpy(h->ip_addr, ip_buffer);
+    h->expire_time = apr_time_now() + apr_time_make(600,0);
 
     log_printf(20, "lookup_host: end host=%s address=%s\n", name, ip_buffer);
 
-    //** Add the enry to the table
-    apr_hash_set(_cache->table, h->name, APR_HASH_KEY_STRING, h);
+    //** Add the enry to the table if needed
+    if (refresh == 0) apr_hash_set(_cache->table, h->name, APR_HASH_KEY_STRING, h);
 
     //** Return the address
     if (ip_addr != NULL) strcpy(ip_addr, h->ip_addr);
@@ -161,7 +187,7 @@ int tbx_dnsc_lookup(const char *name, char *byte_addr, char *ip_addr)
 
 int tbx_dnsc_startup()
 {
-    return tbx_dnsc_startup_sized(100);
+    return tbx_dnsc_startup_sized(10000);
 }
 
 //**************************************************************************

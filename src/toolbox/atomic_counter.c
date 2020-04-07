@@ -25,17 +25,17 @@
 
 #include "tbx/atomic_counter.h"
 
-static tbx_atomic_unit32_t _tbx_atomic_global_counter = 0;
+static tbx_atomic_int_t _tbx_atomic_global_counter = 0;
 
 static apr_threadkey_t *tbx_atomic_thread_id_key;
-tbx_atomic_unit32_t _atomic_times_used = 0;
+tbx_atomic_int_t _atomic_times_used = 0;
 apr_pool_t *_atomic_mpool = NULL;
 
 //*************************************************************************
 // tbx_atomic_global_counter - Returns the global counter and inc's it as well
 //*************************************************************************
 
-inline int tbx_atomic_counter(tbx_atomic_unit32_t *counter)
+inline int tbx_atomic_counter(tbx_atomic_int_t *counter)
 {
     int n;
     n = tbx_atomic_inc(*counter);

@@ -8,3 +8,4 @@ doc/latex
 doc/xml
 src/lio/lio/version.h
 venv/
+ignore

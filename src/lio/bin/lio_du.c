@@ -40,6 +40,7 @@ typedef struct {
     int64_t bytes;
     int64_t count;
     int ftype;
+    int flen;
 } du_entry_t;
 
 lio_path_tuple_t tuple;
@@ -47,12 +48,35 @@ lio_path_tuple_t tuple;
 int base = 1;
 
 //*************************************************************************
+// make_fname - Makes the fname for printing and comparison.
+//    Simply adds atrailing '/' if it's a directory.  fname may be
+//    freed if needed.
+//*************************************************************************
+
+char *make_fname(char *fname, int ftype)
+{
+    char *fn;
+    int n;
+
+    if (ftype & OS_OBJECT_DIR_FLAG) {
+        n = strlen(fname);
+        tbx_type_malloc(fn, char, n+2);
+        memcpy(fn, fname, n);
+        fn[n] = '/';
+        fn[n+1] = 0;
+        free(fname);
+        return(fn);
+    }
+
+    return(fname);
+}
+
+//*************************************************************************
 // ls_format_entry - Prints an LS entry
 //*************************************************************************
 
 void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 {
-    char *is_dir;
     char ppsize[128];
     double fsize;
     long int n;
@@ -64,12 +88,12 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
         tbx_stk_pretty_print_double_with_scale(base, fsize, ppsize);
     }
 
-    is_dir = (de->ftype & OS_OBJECT_DIR_FLAG) ? "/" : "";
-    if (sumonly == 1) {
+    if (sumonly > 0) {
         n = ((de->ftype & OS_OBJECT_DIR_FLAG) > 0) ? de->count : 1;
-        info_printf(ifd, 0, "%10s  %10ld  %s%s\n", ppsize, n, de->fname, is_dir);
+        if (sumonly == 2) n = de->count;
+        info_printf(ifd, 0, "%10s  %10ld  %s\n", ppsize, n, de->fname);
     } else {
-        info_printf(ifd, 0, "%10s  %s%s\n", ppsize, de->fname, is_dir);
+        info_printf(ifd, 0, "%10s  %s\n", ppsize, de->fname);
     }
 
     return;
@@ -80,9 +104,9 @@ void du_format_entry(tbx_log_fd_t *ifd, du_entry_t *de, int sumonly)
 
 int main(int argc, char **argv)
 {
-    int i, ftype, rg_mode, start_index, start_option, nosort, prefix_len;
+    int i, ftype, rg_mode, start_index, start_option, nosort, prefix_len, first;
     char *fname;
-    du_entry_t *de;
+    du_entry_t *de, *de_prev;
     tbx_list_t *table, *sum_table, *lt;
     lio_os_regex_table_t *rp_single, *ro_single;
     os_object_iter_t *it;
@@ -129,6 +153,7 @@ int main(int argc, char **argv)
     ignoreln = 1;
     sumonly = 0;
     obj_types = OS_OBJECT_ANY_FLAG;
+    de_prev = NULL;
     i=1;
     do {
         start_option = i;
@@ -165,7 +190,7 @@ int main(int argc, char **argv)
 
     if (rg_mode == 0) {
         if (i>=argc) {
-            printf("Missing directory!\n");
+            fprintf(stderr, "Missing directory!\n");
             return(2);
         }
     } else {
@@ -221,10 +246,11 @@ int main(int argc, char **argv)
                     goto next_top;  //** Ignoring links
                 }
 
-                log_printf(15, "sumonly inserting fname=%s\n", fname);
                 tbx_type_malloc_clear(de, du_entry_t, 1);
-                de->fname = fname;
+                de->fname = make_fname(fname, ftype);
+                log_printf(15, "sumonly inserting fname=%s\n", fname);
                 de->ftype = ftype;
+                de->flen = strlen(de->fname);
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
                 tbx_list_insert(sum_table, de->fname, de);
@@ -236,6 +262,12 @@ next_top:
             }
 
             lio_destroy_object_iter(tuple.lc, it);
+
+            if (ftype < 0) {
+                fprintf(stderr, "ERROR getting the next object!\n");
+                return_code = EIO;
+                goto finished;
+            }
 
             log_printf(15, "sum_table=%d\n", tbx_list_key_count(sum_table));
         }
@@ -257,31 +289,47 @@ next_top:
                 goto next;  //** Ignoring links
             }
 
-            if ((sumonly == 1) && ((ftype & OS_OBJECT_FILE_FLAG) > 0)) {
-                bytes = 0;
-                if (val != NULL) sscanf(val, I64T, &bytes);
+            if (sumonly == 1) {
+                if (ftype & OS_OBJECT_FILE_FLAG) {
+                    bytes = 0;
+                    if (val != NULL) sscanf(val, I64T, &bytes);
 
-                lit = tbx_list_iter_search(sum_table, NULL, 0);
-                while ((tbx_list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0) {
-                    if ((strncmp(de->fname, fname, strlen(de->fname)) == 0) && ((de->ftype & OS_OBJECT_DIR_FLAG) > 0)) {
-                        log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
-                        de->bytes += bytes;
-                        de->count++;
-                    }
+                    first = 1;
+                    de = de_prev; //** Seed the loop with the previous match
+                    do {
+                        if (de) {
+                            if ((strncmp(de->fname, fname, de->flen) == 0) && ((de->ftype & OS_OBJECT_DIR_FLAG) > 0)) {
+                                log_printf(15, "accum de->fname=%s fname=%s\n", de->fname, fname);
+                                de->bytes += bytes;
+                                de->count++;
+                                de_prev = de;
+                                break;
+                            } else {
+                                de = NULL;
+                            }
+                        }
+                        if ((!de) && (first)) {
+                            first = 0;
+                            lit = tbx_list_iter_search(sum_table, NULL, 0);
+                        }
+                    } while ((tbx_list_next(&lit, (tbx_list_key_t **)&file, (tbx_list_data_t **)&de)) == 0);
                 }
                 free(fname);
-            } else if (nosort == 1) {
+            } else {
                 tbx_type_malloc_clear(de, du_entry_t, 1);
-                de->fname = fname;
+                de->fname = make_fname(fname, ftype);
                 de->ftype = ftype;
+                de->flen = strlen(de->fname);
 
                 if (val != NULL) sscanf(val, I64T, &(de->bytes));
 
-                du_format_entry(lio_ifd, de, sumonly);
-                free(de->fname);
-                free(de);
-            } else {
-                free(fname);
+                if (nosort == 1) {
+                    du_format_entry(lio_ifd, de, sumonly);
+                    free(de->fname);
+                    free(de);
+                } else {
+                    tbx_list_insert(table, de->fname, de);
+                }
             }
 
 next:
@@ -291,6 +339,11 @@ next:
         }
 
         lio_destroy_object_iter(tuple.lc, it);
+
+        if (ftype < 0) {
+            fprintf(stderr, "ERROR getting the next object!\n");
+            return_code = EIO;
+        }
 
         lio_path_release(&tuple);
         if (rp_single != NULL) {
@@ -326,8 +379,8 @@ next:
     du_total.fname = "TOTAL";
     du_total.bytes = total_bytes;
     du_total.count = total_files;
-    du_total.ftype = OS_OBJECT_DIR_FLAG;
-    du_format_entry(lio_ifd, &du_total, sumonly);
+    du_total.ftype = OS_OBJECT_FILE_FLAG;
+    du_format_entry(lio_ifd, &du_total, 2);
 
     if (sumonly == 1) tbx_list_destroy(sum_table);
 

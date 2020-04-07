@@ -431,18 +431,17 @@ gop_op_status_t lio_remove_object_fn(void *arg, int id)
 
     //** Load the exnode and remove it if needed.
     //** Only done for normal files.  No links or dirs
+    //** We also ignore any errors since nothing can be done becasue the OS entry is gone.
     if ((ex_remove == 1) && (ex_data != NULL)) {
         //** Deserialize it
         exp = lio_exnode_exchange_text_parse(ex_data);
         ex = lio_exnode_create();
         if (lio_exnode_deserialize(ex, exp, op->lc->ess) != 0) {
             log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
-            status = gop_failure_status;
         } else {  //** Execute the remove operation since we have a good exnode
             err = gop_sync_exec(exnode_remove_gop(op->lc->tpc_unlimited, ex, op->lc->da, op->lc->timeout));
             if (err != OP_STATE_SUCCESS) {
                 log_printf(15, "ERROR removing data for object fname=%s\n", op->src_path);
-                status = gop_failure_status;
             }
         }
 

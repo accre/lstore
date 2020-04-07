@@ -27,6 +27,7 @@
 
 #include "callback.h"
 #include "gop.h"
+#include "hp.h"
 #include "gop/opque.h"
 #include "gop/types.h"
 
@@ -218,7 +219,7 @@ void _gop_start_execution(gop_op_generic_t *g)
     } else if (g->base.started_execution == 0) {
         log_printf(15, "gid=%d started_execution=%d\n", gop_get_id(g), g->base.started_execution);
         g->base.started_execution = 1;
-        g->base.pc->fn->submit(g->base.pc->arg, g);
+        gop_op_submit(g);
     }
 }
 
@@ -232,18 +233,6 @@ void gop_start_execution(gop_op_generic_t *g)
     _gop_start_execution(g);
     unlock_gop(g);
 }
-
-//*************************************************************
-// gop_set_exec_mode - SEts the gop's execution mode
-//*************************************************************
-
-void gop_set_exec_mode(gop_op_generic_t *g, gop_op_exec_mode_t mode)
-{
-    if (gop_get_type(g) == Q_TYPE_OPERATION) {
-        g->base.execution_mode = mode;
-    }
-}
-
 
 //*************************************************************
 // gop_finished_submission - Mark que to stop accepting
@@ -362,7 +351,9 @@ gop_op_generic_t *gop_waitany(gop_op_generic_t *g)
             log_printf(15, "sync_exec_que -- waiting for pgid=%d cgid=%d to complete\n", gop_id(g), gop_id(gop));
             unlock_gop(g);
             gop_waitany(gop);
-            tbx_stack_pop(g->q->finished); //** Remove it from the finished list.
+            lock_gop(g);
+            gop = tbx_stack_pop(g->q->finished); //** Remove it from the finished list. This could be a different task so use whats on top
+            unlock_gop(g);
             return(gop);
         } else {
             _gop_start_execution(g);  //** Make sure things have been submitted
@@ -375,10 +366,10 @@ gop_op_generic_t *gop_waitany(gop_op_generic_t *g)
     } else {
         log_printf(15, "gop_waitany: BEFORE (type=op) While gid=%d state=%d\n", gop_id(g), g->base.state);
         tbx_log_flush();
-        if ((g->base.pc->fn->sync_exec != NULL) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+        if (gop_op_sync_exec_enabled(g) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             unlock_gop(g);  //** Don't need this for a direct exec
             log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(g));
-            g->base.pc->fn->sync_exec(g->base.pc, g);
+            gop_op_sync_exec(g);
             log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(g), g->base.state);
             return(g);
         } else {  //** Got to submit it normally
@@ -430,10 +421,10 @@ int gop_waitall(gop_op_generic_t *g)
             }
         }
     } else {     //** Got a single task
-        if ((g->base.pc->fn->sync_exec != NULL) && (g->base.started_execution == 0)) {  //** See if we can directly exec
+        if (gop_op_sync_exec_enabled(g) && (g->base.started_execution == 0)) {  //** See if we can directly exec
             unlock_gop(g);  //** Don't need this for a direct exec
             log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(g));
-            g->base.pc->fn->sync_exec(g->base.pc, g);
+            gop_op_sync_exec(g);
             status = _gop_completed_successfully(g);
             log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(g), status);
             return(status);
@@ -602,9 +593,9 @@ int gop_sync_exec(gop_op_generic_t *gop)
     int err;
 
     if (gop->type == Q_TYPE_OPERATION) { //** Got an operation so see if we can directly exec it
-        if (gop->base.pc->fn->sync_exec != NULL) {  //** Yup we can!
+        if (gop_op_sync_exec_enabled(gop)) {  //** Yup we can!
             log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(gop));
-            gop->base.pc->fn->sync_exec(gop->base.pc, gop);
+            gop_op_sync_exec(gop);
             err = _gop_completed_successfully(gop);
             log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(gop), err);
             gop_free(gop, OP_DESTROY);
@@ -633,9 +624,9 @@ gop_op_status_t gop_sync_exec_status(gop_op_generic_t *gop)
     gop_op_status_t status;
 
     if (gop->type == Q_TYPE_OPERATION) { //** Got an operation so see if we can directly exec it
-        if (gop->base.pc->fn->sync_exec != NULL) {  //** Yup we can!
+        if (gop_op_sync_exec_enabled(gop)) {  //** Yup we can!
             log_printf(15, "sync_exec -- waiting for gid=%d to complete\n", gop_id(gop));
-            gop->base.pc->fn->sync_exec(gop->base.pc, gop);
+            gop_op_sync_exec(gop);
             status = gop->base.status;
             log_printf(15, "sync_exec -- gid=%d completed with err=%d\n", gop_id(gop), status.op_status);
             gop_free(gop, OP_DESTROY);

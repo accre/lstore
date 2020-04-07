@@ -16,12 +16,17 @@
 
 #define _log_module_index 205
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <errno.h>
 #include <gop/gop.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tbx/assert_result.h>
+#include <tbx/direct_io.h>
 #include <tbx/log.h>
 #include <tbx/string_token.h>
 #include <tbx/stdinarray_iter.h>
@@ -31,14 +36,36 @@
 #include <lio/lio.h>
 #include <lio/os.h>
 
+//*************************************************************************
+// local_get - Get data from a local file
+//*************************************************************************
+
+int local_get(lio_path_tuple_t *tuple, ex_off_t bufsize, char *buffer, ex_off_t offset, ex_off_t len)
+{
+    FILE *fd;
+    gop_op_status_t status;
+
+    fd = fopen(tuple->path, "r");
+    if (fd == NULL) {
+        fprintf(stderr, "ERROR opening file %s\n", tuple->path);
+        return(errno);
+    }
+
+    tbx_dio_init(fd);
+    status = gop_sync_exec_status(lio_cp_local2local_gop(fd, stdout, bufsize, buffer, offset, -1, len, 0, NULL, 0));
+    tbx_dio_finish(fd, 0);
+
+    fclose(fd);
+    return(status.error_code);
+}
 
 //*************************************************************************
 //*************************************************************************
 
 int main(int argc, char **argv)
 {
-    ex_off_t bufsize;
-    int err, err_close, ftype, i, start_index, start_option, return_code;
+    ex_off_t bufsize, offset, len;
+    int err, err_close, ftype, i, start_index, start_option, return_code, enable_local;
     char *buffer;
     char *path;
     tbx_stdinarray_iter_t *it;
@@ -51,12 +78,19 @@ int main(int argc, char **argv)
     _lio_ifd = stderr;  //** Default to all information going to stderr since the output is file data.
 
     bufsize = 20*1024*1024;
+    offset = 0;
+    len = -1;
+    enable_local = 0;
 
     if (argc < 2) {
         printf("\n");
-        printf("lio_get LIO_COMMON_OPTIONS [-b bufsize] src_file1 .. src_file_N\n");
+        printf("lio_get LIO_COMMON_OPTIONS [-b bufsize] [-o offset len] [--local] src_file1 .. src_file_N\n");
         lio_print_options(stdout);
         printf("    -b bufsize         - Buffer size to use. Units supported (Default=%s)\n", tbx_stk_pretty_print_int_with_scale(bufsize, ppbuf));
+        printf("    -o offset len      - Only return the file starting at the provided offset and length.\n");
+        printf("                         The default is to return the whole file.  Units are supported.\n");
+        printf("                         If the length is -1 then the rest of the file is returned.\n");
+        printf("    --local            - Enable reading of local files in addition to LStore files.\n");
         printf("    src_file           - Source file\n");
         return(1);
     }
@@ -71,6 +105,15 @@ int main(int argc, char **argv)
                 i++;
                 bufsize = tbx_stk_string_get_integer(argv[i]);
                 i++;
+            } else if (strcmp(argv[i], "-o") == 0) {
+                i++;
+                offset = tbx_stk_string_get_integer(argv[i]);
+                i++;
+                len = tbx_stk_string_get_integer(argv[i]);
+                i++;
+            } else if (strcmp(argv[i], "--local") == 0) {
+                i++;
+                enable_local = 1;
             }
 
         } while ((start_option - i < 0) && (i<argc));
@@ -83,19 +126,24 @@ int main(int argc, char **argv)
         return(EINVAL);
     }
 
-    //** Make the buffer
-    tbx_type_malloc(buffer, char, bufsize+1);
+    //** Make the buffer. This makes sure it's page aligned for both R and W buffers
+    tbx_fudge_align_size(bufsize, 2*getpagesize());
+    tbx_malloc_align(buffer, getpagesize(), bufsize);
     it = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
     while ((path = tbx_stdinarray_iter_next(it)) != NULL) {
         //** Get the source
         tuple = lio_path_resolve(lio_gc->auto_translate, path);
-        if (tuple.is_lio < 0) {
-            fprintf(stderr, "Unable to parse path: %s\n", path);
-            free(path);
-            return_code = EINVAL;
-            continue;
-        }
         free(path);
+        if (tuple.is_lio == 0) {
+            if (enable_local == 1) {
+                return_code = local_get(&tuple, bufsize, buffer, offset, len);
+            } else {
+                fprintf(stderr, "Unable to parse path: %s\n", tuple.path);
+                return_code = EINVAL;
+            }
+
+            goto finished_early;
+        }
 
         //** Check if it exists
         ftype = lio_exists(tuple.lc, tuple.creds, tuple.path);
@@ -114,7 +162,7 @@ int main(int argc, char **argv)
         }
 
         //** Do the get
-        err = gop_sync_exec(lio_cp_lio2local_gop(fd, stdout, bufsize, buffer, NULL));
+        err = gop_sync_exec(lio_cp_lio2local_gop(fd, stdout, bufsize, buffer, offset, len, NULL));
         if (err != OP_STATE_SUCCESS) {
             return_code = EIO;
             fprintf(stderr, "Failed reading data!  path=%s\n", tuple.path);
@@ -136,7 +184,6 @@ finished_early:
     tbx_stdinarray_iter_destroy(it);
     lio_shutdown();
 
-    if (err != OP_STATE_SUCCESS) return_code = EIO;
     return(return_code);
 }
 

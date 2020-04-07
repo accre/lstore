@@ -52,19 +52,23 @@ gop_op_status_t touch_fn(void *arg, int id)
 
 
     ftype = lio_exists(tuple->lc, tuple->creds, tuple->path);
-    if (ftype != 0) { //** The file exists so just update the modified attribute
+    if (ftype > 0) { //** The file exists so just update the modified attribute
         err = gop_sync_exec(lio_setattr_gop(tuple->lc, tuple->creds, tuple->path, NULL, "os.timestamp.system.modify_data", NULL, 0));
         if (err != OP_STATE_SUCCESS) {
             status.op_status = OP_STATE_FAILURE;
             status.error_code = 1;
         }
-    } else {  //** New file so create the object
+    } else if (ftype == 0) {  //** New file so create the object
         err = gop_sync_exec(lio_create_gop(tuple->lc, tuple->creds, tuple->path, OS_OBJECT_FILE_FLAG, exnode_data, NULL));
         if (err != OP_STATE_SUCCESS) {
-            log_printf(1, "ERROR creating file!\n");
+            fprintf(stderr, "ERROR getting the next object!\n");
             status.op_status = OP_STATE_FAILURE;
             status.error_code = 2;
         }
+    } else {
+        fprintf(stderr, "ERROR checking if file exists: %s\n", tuple->path);
+        status.op_status = OP_STATE_FAILURE;
+        status.error_code = EIO;
     }
 
     return(status);
@@ -116,7 +120,7 @@ int main(int argc, char **argv)
 
     //** This is the file to create
     if (argv[i] == NULL) {
-        printf("Missing source file!\n");
+        fprintf(stderr, "Missing source file!\n");
         return(2);
     }
 
@@ -124,7 +128,7 @@ int main(int argc, char **argv)
     if (ex_fname != NULL) {
         fd = fopen(ex_fname, "r");
         if (fd == NULL) {
-            printf("ERROR reading exnode!\n");
+            fprintf(stderr, "ERROR reading exnode!\n");
             return(EIO);
         }
         fseek(fd, 0, SEEK_END);
@@ -135,7 +139,7 @@ int main(int argc, char **argv)
 
         fseek(fd, 0, SEEK_SET);
         if (fread(exnode_data, i, 1, fd) != 1) { //**
-            printf("ERROR reading exnode from disk!\n");
+            fprintf(stderr, "ERROR reading exnode from disk!\n");
             return(EIO);
         }
         fclose(fd);

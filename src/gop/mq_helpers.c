@@ -34,7 +34,7 @@
 #include "mq_helpers.h"
 #include "mq_portal.h"
 
-static tbx_atomic_unit32_t _id_counter = 0;
+static tbx_atomic_int_t _id_counter = 0;
 
 //***********************************************************************
 // mq_id_bytes - Returns hte number of bytes for the remote id.
@@ -63,9 +63,9 @@ int mq_id_bytes(char *host, int len)
 
 gop_mq_frame_t *mq_make_id_frame()
 {
-    tbx_atomic_unit32_t *id;
+    tbx_atomic_int_t *id;
 
-    tbx_type_malloc(id, tbx_atomic_unit32_t, 1);
+    tbx_type_malloc(id, tbx_atomic_int_t, 1);
 
     *id = tbx_atomic_inc(_id_counter);
 
@@ -73,7 +73,7 @@ gop_mq_frame_t *mq_make_id_frame()
         tbx_atomic_set(_id_counter, 0);
     }
 
-    return(gop_mq_frame_new(id, sizeof(tbx_atomic_unit32_t), MQF_MSG_AUTO_FREE));
+    return(gop_mq_frame_new(id, sizeof(tbx_atomic_int_t), MQF_MSG_AUTO_FREE));
 }
 
 
@@ -179,38 +179,26 @@ mq_msg_t *gop_mq_make_response_core_msg(mq_msg_t *address, gop_mq_frame_t *fid)
 }
 
 //***********************************************************************
-// mq_num_frames - Returns the number of frames in the message
-//***********************************************************************
-
-int mq_num_frames(mq_msg_t *msg)
-{
-    gop_mq_frame_t *f;
-    int n;
-
-    for(f = gop_mq_msg_first(msg), n = 0; f != NULL; f = gop_mq_msg_next(msg), n++);
-
-    return n;
-}
-
-//***********************************************************************
 // mq_address_to_string - Converts a message to a comma-separated string
 //***********************************************************************
 
 char *mq_address_to_string(mq_msg_t *address)
 {
     gop_mq_frame_t *f;
+    gop_mq_msg_iter_t *curr;
     int msg_size, frames, n, size;
     char *string, *data;
 
     if (address == NULL) return(NULL);
     msg_size = gop_mq_msg_total_size(address); // sum of frame data lengths
-    frames = mq_num_frames(address);
+    frames = gop_mq_msg_count(address);
     n = 0;
     size = 0;
 
     string = malloc(msg_size + frames);
 
-    for (f = gop_mq_msg_first(address); f != NULL; f = gop_mq_msg_next(address)) {
+    for (curr = gop_mq_msg_iter_first(address); curr != NULL; curr = gop_mq_msg_iter_next(curr)) {
+        f = gop_mq_msg_iter_frame(curr);
         gop_mq_get_frame(f, (void **)&data, &size);
         memcpy(string + n, data, size);
         n += size;
@@ -220,7 +208,7 @@ char *mq_address_to_string(mq_msg_t *address)
     *(string + (--n)) = 0; // remove the trailing comma and make this the end of the string
 
     // For testing:
-    log_printf(0, "DEBUG: string created = %s, malloc size = %d, actual size = %lu\n", string, (msg_size+frames+10), strlen(string));
+    //log_printf(0, "DEBUG: string created = %s, malloc size = %d, actual size = %lu\n", string, (msg_size+frames), strlen(string));
 
     return(string);
 }

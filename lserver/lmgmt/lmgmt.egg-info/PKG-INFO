@@ -1,0 +1,20 @@
+Metadata-Version: 2.1
+Name: lmgmt
+Version: 1.0
+Summary: LServer management tools
+Home-page: https://github.com/accre/lstore
+Author: Alan Tackett
+Author-email: alan.tackett@vanderbilt.edu
+License: UNKNOWN
+Description: LServer Management Library package
+        =================================================================
+        
+        Routines to simplify generating file lists for repair and 
+        rebalancing data across resources
+        
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Description-Content-Type: text/markdown

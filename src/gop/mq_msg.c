@@ -70,6 +70,22 @@ char *gop_mq_frame_strdup(gop_mq_frame_t *f)
 // quick stack related msg routines
 //*************************************************************
 
+int gop_mq_msg_count(mq_msg_t *msg)
+{
+    return(tbx_stack_count(msg));
+}
+gop_mq_msg_iter_t *gop_mq_msg_iter_first(mq_msg_t *msg)
+{
+    return(tbx_stack_get_top(msg));
+}
+void *gop_mq_msg_iter_next(gop_mq_msg_iter_t *curr)
+{
+    return(tbx_stack_ele_get_down(curr));
+}
+gop_mq_frame_t *gop_mq_msg_iter_frame(gop_mq_msg_iter_t *curr)
+{
+    return((gop_mq_frame_t *)tbx_stack_ele_get_data(curr));
+}
 mq_msg_t *gop_mq_msg_new()
 {
     return(tbx_stack_new());
@@ -162,7 +178,6 @@ void gop_mq_frame_destroy(gop_mq_frame_t *f)
         f->data = NULL;
     } else if (f->auto_free == MQF_MSG_INTERNAL_FREE) {
         zmq_msg_close(&(f->zmsg));
-        zmq_msg_init(&(f->zmsg));
     }
     free(f);
 }
@@ -243,13 +258,13 @@ gop_mq_msg_hash_t gop_mq_msg_hash(mq_msg_t *msg)
 int gop_mq_msg_total_size(mq_msg_t *msg)
 {
     gop_mq_frame_t *f;
+    tbx_stack_ele_t *curr;
     int n;
 
     n = 0;
-    tbx_stack_move_to_top(msg);
-    while ((f = tbx_stack_get_current_data(msg)) != NULL) {
+    for (curr = tbx_stack_get_top(msg); curr != NULL; curr = tbx_stack_ele_get_down(curr)) {
+        f = tbx_stack_ele_get_data(curr);
         n += f->len;
-        tbx_stack_move_down(msg);
     }
 
     return(n);

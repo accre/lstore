@@ -179,7 +179,7 @@ tbx_stack_ele_t *pop_link(tbx_stack_t *stack)
 }
 
 //***************************************************
-// pop - push an element on top of the stack
+// tbx_stack_pop - Pop an element off the TOP of the stack
 //***************************************************
 
 void *tbx_stack_pop(tbx_stack_t *stack)
@@ -192,6 +192,22 @@ void *tbx_stack_pop(tbx_stack_t *stack)
 
     data = ele->data;
     free(ele);
+
+    return(data);
+
+}
+
+//***************************************************
+// tbx_stack_pop_bottom - Pop an element of the BOTTOM of the stack
+//***************************************************
+
+void *tbx_stack_pop_bottom(tbx_stack_t *stack)
+{
+    void *data;
+
+    tbx_stack_move_to_bottom(stack);
+    data = tbx_stack_get_current_data(stack);
+    tbx_stack_delete_current(stack, 1, 0);
 
     return(data);
 
@@ -293,12 +309,58 @@ int tbx_stack_move_up(tbx_stack_t *stack)
 }
 
 //***************************************************
-// insert_link_below - Inserts an existing "unlinked"
+// tbx_stack_top_first - Position the stack to the
+//      top element and return it.
+//***************************************************
+
+void *tbx_stack_top_first(tbx_stack_t *stack)
+{
+    tbx_stack_move_to_top(stack);
+    return(tbx_stack_get_current_data(stack));
+}
+
+
+//***************************************************
+// tbx_stack_bottom_first - Position the stack to the
+//      last element and return it.
+//***************************************************
+
+void *tbx_stack_bottom_first(tbx_stack_t *stack)
+{
+    tbx_stack_move_to_bottom(stack);
+    return(tbx_stack_get_current_data(stack));
+}
+
+//***************************************************
+// tbx_stack_next_down - Move the pointer down to the
+//      next element and return it.
+//***************************************************
+
+void *tbx_stack_next_down(tbx_stack_t *stack)
+{
+    tbx_stack_move_down(stack);
+    return(tbx_stack_get_current_data(stack));
+}
+
+//***************************************************
+// tbx_stack_next_up - Move the pointer up to the
+//      next element and return it.
+//***************************************************
+
+void *tbx_stack_next_up(tbx_stack_t *stack)
+{
+    tbx_stack_move_up(stack);
+    return(tbx_stack_get_current_data(stack));
+}
+
+
+//***************************************************
+// tbx_stack_link_insert_below - Inserts an existing "unlinked"
 //      element "below" the current element and makes
 //      the new element the current element
 //***************************************************
 
-int insert_link_below(tbx_stack_t *stack, tbx_stack_ele_t *ele)
+int tbx_stack_link_insert_below(tbx_stack_t *stack, tbx_stack_ele_t *ele)
 {
     int move_ends;
 
@@ -338,7 +400,7 @@ int tbx_stack_insert_below(tbx_stack_t *stack, void *data)
 
     ele =(tbx_stack_ele_t *) malloc(sizeof(tbx_stack_ele_t));
     ele->data = data;
-    int ret = insert_link_below(stack, ele);
+    int ret = tbx_stack_link_insert_below(stack, ele);
     if (!ret)
         free(ele);
     return ret;

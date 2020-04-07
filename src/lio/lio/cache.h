@@ -35,22 +35,14 @@ typedef struct lio_cache_fn_t lio_cache_fn_t;
 typedef struct lio_cache_page_t lio_cache_page_t;
 typedef struct lio_cache_partial_page_t lio_cache_partial_page_t;
 typedef struct lio_cache_range_t lio_cache_range_t;
-typedef struct lio_cache_lio_segment_t lio_cache_lio_segment_t;
+typedef struct lio_cache_segment_t lio_cache_segment_t;
 typedef struct lio_cache_t lio_cache_t;
 typedef struct lio_data_page_t lio_data_page_t;
 typedef struct lio_cache_stats_get_t lio_cache_stats_get_t;
-typedef struct lio_page_handle_t lio_page_handle_t;
-typedef struct lio_page_table_t lio_page_table_t;
-//* FIXME: leaky
-typedef struct lio_amp_page_stream_t lio_amp_page_stream_t;
-typedef struct lio_amp_page_wait_t lio_amp_page_wait_t;
-typedef struct lio_amp_stream_table_t lio_amp_stream_table_t;
-typedef struct lio_cache_amp_t lio_cache_amp_t;
-typedef struct lio_page_amp_t lio_page_amp_t;
 
 // Functions
 LIO_API lio_cache_stats_get_t get_lio_cache_stats_get(lio_cache_t *c);
-LIO_API int lio_cache_pages_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi);
+LIO_API int lio_segment_cache_pages_drop(lio_segment_t *seg, ex_off_t lo, ex_off_t hi);
 
 #ifdef __cplusplus
 }

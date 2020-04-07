@@ -21,7 +21,7 @@
 #define _log_module_index 162
 
 #include <gop/gop.h>
-#include <gop/hp.h>
+#include <gop/portal.h>
 #include <gop/tp.h>
 #include <libgen.h>
 #include <lio/segment.h>
@@ -55,9 +55,9 @@ typedef struct {
     char *fname;
     char *qname;
     gop_thread_pool_context_t *tpc;
-    tbx_atomic_unit32_t hard_errors;
-    tbx_atomic_unit32_t soft_errors;
-    tbx_atomic_unit32_t write_errors;
+    tbx_atomic_int_t hard_errors;
+    tbx_atomic_int_t soft_errors;
+    tbx_atomic_int_t write_errors;
 } segfile_priv_t;
 
 typedef struct {
@@ -451,7 +451,7 @@ ex_off_t segfile_size(lio_segment_t *seg)
 // segfile_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t segfile_block_size(lio_segment_t *seg)
+ex_off_t segfile_block_size(lio_segment_t *seg, int btype)
 {
     return(1);
 }

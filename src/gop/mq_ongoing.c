@@ -512,7 +512,7 @@ int _mq_ongoing_close(gop_mq_ongoing_t *mqon, gop_mq_ongoing_host_t *oh, gop_opq
         if (oo->auto_clean) apr_hash_set(oh->table, key, klen, NULL);  //** I'm cleaning up so remove it from the table
 
         gop = oo->on_fail(oo->on_fail_arg, oo->handle);
-        gop_set_private(gop, oo);
+        gop_set_private(gop, (oo->auto_clean == 1) ? oo : NULL);
         gop_opque_add(q, gop);
 
         ntasks++;
@@ -573,7 +573,7 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
         if (ntasks > 0) { //** Close some connections so wait for the tasks to complete
             while ((gop = opque_waitany(q)) != NULL) {
                 oo = gop_get_private(gop);
-                if (oo->auto_clean) free(oo);
+                if (oo) free(oo);
                 gop_free(gop, OP_DESTROY);
             }
         }
@@ -613,7 +613,7 @@ void *mq_ongoing_server_thread(apr_thread_t *th, void *data)
     if (ntasks > 0) { //** Closed some connections with tasks so wait for them to complete
         while ((gop = opque_waitany(q)) != NULL) {
             oo = gop_get_private(gop);
-            if (oo->auto_clean) free(oo);
+            if (oo) free(oo);
             gop_free(gop, OP_DESTROY);
         }
     }
@@ -685,7 +685,7 @@ gop_mq_ongoing_t *gop_mq_ongoing_create(gop_mq_context_t *mqc, gop_mq_portal_t *
 
     if (mode & ONGOING_CLIENT) {
         mqon->table = apr_hash_make(mqon->mpool);
-       FATAL_UNLESS(mqon->table != NULL);
+        FATAL_UNLESS(mqon->table != NULL);
 
         tbx_thread_create_assert(&(mqon->ongoing_heartbeat_thread), NULL, ongoing_heartbeat_thread, (void *)mqon, mqon->mpool);
     }

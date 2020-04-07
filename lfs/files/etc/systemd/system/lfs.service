@@ -1,0 +1,11 @@
+[Unit]
+Description=LServer server
+After=network.target auditd.service
+
+[Service]
+ExecStart=/lfs_roots/lfs_service_manager.sh restart
+ExecStop=/lfs_roots/lfs_service_manager.sh stop
+Type=forking
+
+[Install]
+WantedBy=multi-user.target

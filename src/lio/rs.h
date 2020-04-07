@@ -88,6 +88,7 @@ typedef lio_resource_service_fn_t *(rs_create_t)(void *arg, tbx_inip_file_t *ifd
 #define rs_query_dup(rs, q) (rs)->query_dup(rs, q)
 #define rs_data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, ignore_fixed_err, to) (rs)->data_request(rs, da, q, caps, req, n_req, hints_list, fixed_size, n_rid, ignore_fixed_err, to)
 #define rs_destroy_service(rs) (rs)->destroy_service(rs)
+#define rs_print_running_config(rs, fd, psh) (rs)->print_running_config(rs, fd, psh)
 
 lio_rs_space_t rs_space(char *config);
 

@@ -73,7 +73,7 @@ for DISTRO in "${DISTROS[@]}"; do
                                     curl
                                     createrepo
                                     expat-devel
-                                    fuse-devel
+                                    fuse3-devel
                                     leveldb-devel
                                     libdb-dev
                                     libtool

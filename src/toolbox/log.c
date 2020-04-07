@@ -21,6 +21,7 @@
 
 #include <apr_errno.h>
 #include <apr_thread_mutex.h>
+#include <apr_time.h>
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -39,6 +40,7 @@ TBX_API int tbx_stack_get_info_level(tbx_log_fd_t *fd) {
     return fd->level;
 }
 
+static apr_time_t time_start = 0;
 FILE *_log_fd = NULL;
 int _log_level = 0;
 long int _log_currsize = 0;
@@ -60,6 +62,7 @@ void _log_init()
     int n;
 
     tbx_atomic_startup();
+    time_start = apr_time_now();
     if (apr_pool_create(&_log_mpool, NULL) != APR_SUCCESS) {
         fprintf(stderr, "Could not make log memory pool\n");
         exit(1);
@@ -104,6 +107,8 @@ void tbx_log_open(char *fname, int dolock)
     } else if (strcmp(_log_fname, "stderr") == 0) {
         _log_special = 2;
         _log_fd = stderr;
+    } else if (strcmp(_log_fname, "NULL") == 0) {
+        _log_fd = NULL;
     } else if ((_log_fd = fopen(_log_fname, "w")) == NULL) {
         fprintf(stderr, "OPEN_LOG failed! Attempted to us log file %s\n", _log_fname);
         perror("OPEN_LOG: ");
@@ -127,21 +132,26 @@ __attribute__((format (printf, 7, 8)))
 int tbx_mlog_printf(int suppress_header, int module_index, int level, const char *fn, const char *fname, int line, const char *fmt, ...)
 {
     va_list args;
-//  int err;
+    int hours, min, sec, usec;
+    apr_time_t dt;
     int n = 0;
 
+    if (_log_fd == NULL) return(0);
     if (level > _mlog_table[module_index]) return(0);
     if (level > _log_level) return(0);
 
     if (_log_lock == NULL) _log_init();
 
     _lock_log();
-    if (_log_fd == NULL) {
-        _log_fd = stderr;
-        _log_special=2;
-    }
 
-    if (suppress_header == 0) n = fprintf(_log_fd, "[mi=%d tid=%d file=%s:%d fn=%s] ", module_index, tbx_atomic_thread_id, fname, line, fn);
+    //** Calculate the time offsets
+    dt = apr_time_now() - time_start;
+    hours  = apr_time_sec(dt) / 3600;
+    min = (apr_time_sec(dt) / 60) % 60;
+    sec = apr_time_sec(dt) % 60;
+    usec = dt % apr_time_from_sec(1);
+
+    if (suppress_header == 0) n = fprintf(_log_fd, "[dt=%dh%02dm%02ds%06du mi=%d tid=%d file=%s:%d fn=%s] ", hours, min, sec, usec, module_index, tbx_atomic_thread_id, fname, line, fn);
     va_start(args, fmt);
     n += vfprintf(_log_fd, fmt, args);
     va_end(args);
@@ -175,12 +185,11 @@ void tbx_log_flush()
 // mlog_load - Loads the module log information
 //***************************************************************
 
-void tbx_mlog_load(char *fname, char *output_override, int log_level_override)
+void tbx_mlog_load(tbx_inip_file_t *fd, char *output_override, int log_level_override)
 {
     char *group_index, *group_level;
     char *name, *value, *logname;
     int n, default_level;
-    tbx_inip_file_t *fd;
     tbx_inip_group_t *g;
     tbx_inip_element_t *ele;
 
@@ -190,17 +199,15 @@ void tbx_mlog_load(char *fname, char *output_override, int log_level_override)
     group_index = "log_index";
     group_level = "log_level";
 
-    //** Open the file
-    fd = tbx_inip_file_read(fname);
     if (fd == NULL) {
-        log_printf(0, "Error loading module definitions!  fname=%s\n", fname);
+        log_printf(0, "Error loading module definitions!\n");
         return;
     }
 
     default_level = tbx_inip_get_integer(fd, group_level, "default", 0);
     _log_level = (log_level_override > -10) ? log_level_override : tbx_inip_get_integer(fd, group_level, "start_level", 0);
     for (n=0; n<_mlog_size; n++) _mlog_table[n] = default_level;
-    logname = (output_override == NULL) ? tbx_inip_get_string(fd, group_level, "output", "stdout") : strdup(output_override);
+    logname = (output_override == NULL) ? tbx_inip_get_string(fd, group_level, "output", "NULL") : strdup(output_override);
     open_log(logname);
     free(logname);
     _log_maxsize = tbx_inip_get_integer(fd, group_level, "size", 100*1024*1024);
@@ -209,7 +216,6 @@ void tbx_mlog_load(char *fname, char *output_override, int log_level_override)
     g = tbx_inip_group_find(fd, group_index);
     if (g == NULL) {
         log_printf(1, "Missing %s group!\n", group_index);
-        tbx_inip_destroy(fd);
         return;
     }
 
@@ -231,8 +237,6 @@ void tbx_mlog_load(char *fname, char *output_override, int log_level_override)
         //** Move to the next segmnet to load
         ele = tbx_inip_ele_next(ele);
     }
-
-    tbx_inip_destroy(fd);
 }
 
 

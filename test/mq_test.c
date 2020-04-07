@@ -62,7 +62,7 @@ char *client_host = "SERVER|tcp://localhost:6714";
 mq_pipe_t control_efd[2];
 mq_pipe_t server_efd[2];
 int shutdown_everything = 0;
-tbx_atomic_unit32_t ping_count = 0;
+tbx_atomic_int_t ping_count = 0;
 
 //***************************************************************************
 // pack_msg - Packs a message for sending
@@ -597,7 +597,7 @@ gop_mq_context_t *client_make_context()
 void *client_test_thread(apr_thread_t *th, void *arg)
 {
     char v;
-    int nfail, nfail_total, i, min;
+    int nfail, nfail_total, i, j, min;
     gop_mq_context_t *mqc;
 
     log_printf(0, "START\n");
@@ -619,7 +619,9 @@ void *client_test_thread(apr_thread_t *th, void *arg)
     if (min == 1) {
         v = 1;
         log_printf(0, "Skipping raw tests.\n");
-        WARN_UNLESS(1 != gop_mq_pipe_write(control_efd[1], &v));
+        do {
+           j =  gop_mq_pipe_write(control_efd[1], &v);
+        } while (j != 1);
         sleep(1);
         log_printf(0, "Continuing....\n");
     }
@@ -644,7 +646,9 @@ void *client_test_thread(apr_thread_t *th, void *arg)
         if (i==0) { //** Switch the server to using the MQ loop
             v = 1;
             log_printf(0, "Telling server to switch and use the MQ event loop\n");
-            WARN_UNLESS( 1 != gop_mq_pipe_write(control_efd[1], &v));
+            do {
+                j = gop_mq_pipe_write(control_efd[1], &v);
+            } while (j != 1);
             sleep(10);
             log_printf(0, "Continuing....\n");
         }

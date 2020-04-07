@@ -16,6 +16,8 @@ option(BUILD_SHARED_EXES "Build shared LStore executables" ON)
 option(BUILD_TESTS "Build tests" ON)
 option(BUILD_JERASURE "Build Jerasure from source" ON)
 option(BUILD_GRIDFTP "Build GridFTP bindings" OFF)
+option(BUILD_TCMU "Build TCMU-Runner bindings" OFF)
+option(BUILD_HDFS "Build HDFS bindings" OFF)
 
 option(ENABLE_COVERAGE "Enable code coverage" OFF)
 option(ENABLE_ASAN "Enable address sanitizer" OFF)
@@ -111,10 +113,10 @@ set(CMAKE_INSTALL_RPATH "\$ORIGIN/../${CMAKE_INSTALL_LIBDIR}")
 # Defines
 set(USE_SUPERBUILD ON)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99 -D_REENTRANT -D_GNU_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -fvisibility=hidden -fno-strict-aliasing -Wall -Wextra -Werror -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=sign-compare")
+
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--exclude-libs,ALL")
 endif()
-
 
 # Handle enabling LTO
 if(ENABLE_LTO)
@@ -197,6 +199,16 @@ if(HAS_MAYBE_UNINITIALIZED)
     set(LSTORE_FLAG_SUPPRESS_MAYBE_UNINITIALIZED "-Wno-error=maybe-uninitialized")
 endif()
 
+# Check for a couple of compiler flags
+check_c_compiler_flag("-Wimplicit-fallthrough=4" HAS_IMPLICIT_FALLTHROUGH)
+if(HAS_IMPLICIT_FALLTHROUGH)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wimplicit-fallthrough=4")
+endif()
+check_c_compiler_flag("-Wno-format-truncation" HAS_NO_FORMAT_TRUNCATION)
+if(HAS_NO_FORMAT_TRUNCATION)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-format-truncation")
+endif()
+
 # When compiling release modes, asserts disappear which cause some variables
 # to be unused. Suppress errors in this case
 set(LSTORE_CHEAT_FLAGS "-Wno-error=unused-variable -Wno-error=array-bounds ${LSTORE_FLAG_SUPPRESS_MAYBE_UNINITIALIZED} ${LSTORE_FLAG_UNUSED_RESULT}")
@@ -206,7 +218,11 @@ set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} ${LSTORE_CHEAT_FLAGS}")
 
 # Find external deps we don't build
 find_package(OpenSSL REQUIRED)
-find_package(FUSE REQUIRED)
+find_package(FUSE3)
+if (NOT HAS_FUSE3)
+    find_package(FUSE REQUIRED)
+endif()
+
 find_package(ZLIB REQUIRED)
 find_package(ZMQ REQUIRED)
 find_package(LevelDB REQUIRED)
@@ -250,6 +266,9 @@ if(BUILD_TESTS)
     # TODO: add test files with file(GLOB xx test/test-*.c)
     add_executable(varint_test test/varint_test.c)
     target_link_libraries(varint_test pthread toolbox)
+    add_executable(test_que test/test_que.c)
+    target_link_libraries(test_que pthread toolbox)
+    target_include_directories(test_que PRIVATE ${APR_INCLUDE_DIR})
     add_executable(skiplist_test test/skiplist_test.c)
     target_link_libraries(skiplist_test pthread toolbox)
     target_include_directories(skiplist_test PRIVATE ${APR_INCLUDE_DIR})
@@ -265,12 +284,15 @@ if(BUILD_TESTS)
     add_executable(ibp_test test/ibp_test.c test/ibp_sync.c test/ibp_errno.c)
     target_link_libraries(ibp_test pthread toolbox gop ibp)
     target_include_directories(ibp_test PRIVATE ${APR_INCLUDE_DIR})
+    add_executable(inip_sanity_check test/inip_sanity_check.c)
+    target_link_libraries(inip_sanity_check pthread toolbox)
+    target_include_directories(inip_sanity_check PRIVATE ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR})
     add_executable(os_test test/os_test.c)
     target_link_libraries(os_test pthread toolbox gop lio)
     target_include_directories(os_test PRIVATE ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR})
-    add_executable(ex_rw_test test/ex_rw_test.c)
-    target_link_libraries(ex_rw_test pthread toolbox gop lio)
-    target_include_directories(ex_rw_test PRIVATE ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR})
+    add_executable(rw_test test/rw_test.c)
+    target_link_libraries(rw_test pthread toolbox gop lio)
+    target_include_directories(rw_test PRIVATE ${APR_INCLUDE_DIR} ${APRUTIL_INCLUDE_DIR} ${ZMQ_INCLUDE_DIR})
 
 
     add_executable(run-tests test/run-tests.c
@@ -288,11 +310,12 @@ if(BUILD_TESTS)
                              test/runner.c
                              test/runner-unix.c
                              test/benchmark-sizes.c)
-    target_link_libraries(run-benchmarks pthread lio)
+    target_link_libraries(run-benchmarks pthread lio dl)
     target_include_directories(run-benchmarks PRIVATE ${APR_INCLUDE_DIR})
     SET_TARGET_PROPERTIES(run-benchmarks PROPERTIES
                             COMPILE_FLAGS "-DLSTORE_HACK_EXPORT")
     add_executable(fuzz-config test/fuzz-config.c)
+    target_include_directories(fuzz-config PRIVATE ${APR_INCLUDE_DIR})
     target_link_libraries(fuzz-config toolbox)
     if(INSTALL_TESTS)
         install(TARGETS run-tests run-benchmarks fuzz-config
@@ -324,6 +347,12 @@ add_dependencies(docs sphinx-html sphinx-man)
 # Optional packages
 if(BUILD_GRIDFTP)
     add_subdirectory(binding/gridftp)
+endif()
+if(BUILD_TCMU)
+    add_subdirectory(binding/tcmu)
+endif()
+if(BUILD_HDFS)
+    add_subdirectory(binding/hdfs)
 endif()
 
 # Import packaging

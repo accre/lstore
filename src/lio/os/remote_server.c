@@ -47,6 +47,7 @@
 #include <tbx/fmttypes.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
+#include <tbx/siginfo.h>
 #include <tbx/stack.h>
 #include <tbx/type_malloc.h>
 #include <tbx/varint.h>
@@ -61,6 +62,17 @@
 #include "service_manager.h"
 
 #define FIXME_SIZE 1024*1024
+
+static lio_osrs_priv_t osrs_default_options = {
+    .section = "os_remote_server",
+    .hostname = "${osrs_host}",
+    .fname_activity = NULL,
+    .ongoing_interval = 30,
+    .max_stream = 10*1024*1024,
+    .os_local_section = "rs_simple",
+    .fname_active = "/lio/log/os_active.log",
+    .max_active = 1024
+};
 
 typedef struct {
     char *host_id;
@@ -102,7 +114,7 @@ void osrs_print_active_table(lio_object_service_fn_t *os, FILE *fd)
     char sdate[128], ldate[128];
     osrs_active_t *a;
 
-    log_printf(5, "Dumping active table\n");
+    fprintf(fd, "OSRS Dumping active table --------------------------------\n");
 
     apr_thread_mutex_lock(osrs->lock);
     apr_ctime(sdate, apr_time_now());
@@ -118,6 +130,7 @@ void osrs_print_active_table(lio_object_service_fn_t *os, FILE *fd)
         a = tbx_stack_get_current_data(osrs->active_lru);
     }
     apr_thread_mutex_unlock(osrs->lock);
+    fprintf(fd, "\n");
 }
 
 
@@ -125,18 +138,13 @@ void osrs_print_active_table(lio_object_service_fn_t *os, FILE *fd)
 //  signal_print_active_table - Dumps the active table
 //***********************************************************************
 
-void signal_print_active_table(int sig)
+void osrs_siginfo_fn(void *arg, FILE *fd)
 {
-    lio_osrs_priv_t *osrs;
-    FILE *fd;
+    lio_object_service_fn_t *os = (lio_object_service_fn_t *)arg;
 
     if (_os_global == NULL) return;
 
-    osrs = (lio_osrs_priv_t *)_os_global->priv;
-
-    if ((fd = fopen(osrs->fname_active, "w")) == NULL) return;
-    osrs_print_active_table(_os_global, fd);
-    fclose(fd);
+    osrs_print_active_table(os, fd);
 
     return;
 }
@@ -583,6 +591,7 @@ void osrs_remove_regex_object_cb(void *arg, gop_mq_task_t *task)
 
     status = gop_failure_status;
     memset(&spin, 0, sizeof(spin));
+    mqs = NULL;
 
     //** Parse the command.
     msg = task->msg;
@@ -606,17 +615,9 @@ void osrs_remove_regex_object_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-
-        //** Create the stream so we can get the heartbeating while we work
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
         goto fail;
     }
     bpos += n;
-
-    //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
 
     //** Get the spin heartbeat handle ID
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
@@ -642,6 +643,9 @@ void osrs_remove_regex_object_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
+
+    //** Create the stream so we can get the heartbeating while we work
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, (recurse_depth>0) ? 1 : 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
@@ -703,6 +707,7 @@ fail:
     if (object_regex != NULL) lio_os_regex_table_destroy(object_regex);
 
     //** Send the response
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     gop_mq_stream_write(mqs, tbuf, n);
@@ -1601,6 +1606,7 @@ void osrs_regex_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
     memset(&spin, 0, sizeof(spin));
     key = NULL;
     val = NULL, v_size = NULL;
+    mqs = NULL;
     n_attrs = 0;
 
     //** Parse the command.
@@ -1629,13 +1635,9 @@ void osrs_regex_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-    } else {
-        bpos += n;
+        goto fail;
     }
-
-    //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-    if (n < 0) goto fail;
+    bpos += n;
 
     //** Get the spin heartbeat handle ID
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &len);
@@ -1662,6 +1664,9 @@ void osrs_regex_set_mult_attr_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
+
+    //** Create the stream so we can get the heartbeating while we work
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, (recurse_depth > 0) ? 1 : 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
@@ -1775,6 +1780,7 @@ fail:
 
     log_printf(5, "END status=%d n_errs=%d\n", status.op_status, status.error_code);
     //** Send the response
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
     gop_mq_stream_write(mqs, tbuf, n);
@@ -2301,6 +2307,7 @@ void osrs_object_iter_alist_cb(void *arg, gop_mq_task_t *task)
     val = NULL, v_size = NULL;
     n_attrs = 0;
     it = NULL;
+    mqs = NULL;
 
     //** Parse the command.
     msg = task->msg;
@@ -2325,18 +2332,16 @@ void osrs_object_iter_alist_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-        //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
         goto fail;
     }
     bpos += n;
 
-    //** Create the stream so we can get the heartbeating while we work.  We need the timeout is why we do it here,
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
+
+    //** Create the stream so we can get the heartbeating while we work.
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, (recurse_depth>0) ? 1 : 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
@@ -2395,6 +2400,7 @@ void osrs_object_iter_alist_cb(void *arg, gop_mq_task_t *task)
 
 fail:
     //** Encode the status
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     status = (it != NULL) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
@@ -2493,6 +2499,7 @@ void osrs_object_iter_aregex_cb(void *arg, gop_mq_task_t *task)
 
     log_printf(5, "Processing incoming request\n");
 
+    mqs = NULL;
     it = NULL;
     path = object_regex = attr_regex = NULL;
 
@@ -2518,22 +2525,16 @@ void osrs_object_iter_aregex_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-
-        //** Create the stream so things don't break
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
         goto fail;
     }
     bpos += n;
 
-
-    //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
-
-
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &recurse_depth);
     if (n < 0) goto fail;
     bpos += n;
+
+    //** Create the stream so we can get the heartbeating while we work
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, (recurse_depth>0) ? 1 : 0);
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &obj_types);
     if (n < 0) goto fail;
@@ -2572,6 +2573,7 @@ void osrs_object_iter_aregex_cb(void *arg, gop_mq_task_t *task)
 
 fail:
     //** Encode the status
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, hid, 0);
     status = (it != NULL) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
@@ -2678,6 +2680,7 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
     it = NULL;
     handle = NULL;
     attr_regex = NULL;
+    mqs = NULL;
 
     //** Parse the command.
     msg = task->msg;
@@ -2703,7 +2706,6 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
 
         //** Create the stream so we can get the heartbeating while we work
         timeout = 60;
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
         osrs_update_active_table(os, fhid);  //** Update the active log
 
         goto fail;
@@ -2725,10 +2727,6 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &timeout);
     if (n < 0) {
         timeout = 60;
-
-        //** Create the stream so we can get the heartbeating while we work
-        mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
-        osrs_update_active_table(os, fhid);  //** Update the active log
         goto fail;
     }
     bpos += n;
@@ -2736,7 +2734,6 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
     //** Create the stream so we can get the heartbeating while we work
     mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
     osrs_update_active_table(os, fhid);  //** Update the active log
-
 
     n = tbx_zigzag_decode(&(buffer[bpos]), fsize-bpos, &v_size_init);
     if (n < 0) goto fail;
@@ -2758,6 +2755,7 @@ void osrs_attr_iter_cb(void *arg, gop_mq_task_t *task)
 fail:
 
     //** Encode the status
+    if (mqs == NULL) mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
     status = (it != NULL) ? gop_success_status : gop_failure_status;
     n = tbx_zigzag_encode(status.op_status, tbuf);
     n = n + tbx_zigzag_encode(status.error_code, &(tbuf[n]));
@@ -2875,7 +2873,7 @@ void osrs_fsck_iter_cb(void *arg, gop_mq_task_t *task)
     gop_mq_frame_destroy(fdata);
 
     //** Create the stream so we can get the heartbeating while we work
-    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 0);
+    mqs = gop_mq_stream_write_create(osrs->mqc, osrs->server_portal, osrs->ongoing, MQS_PACK_COMPRESS, osrs->max_stream, timeout, msg, fid, fhid, 1);
 
     log_printf(5, "1.err=%d\n", err);
 
@@ -3024,6 +3022,27 @@ void osrs_fsck_object_cb(void *arg, gop_mq_task_t *task)
     if (path != NULL) free(path);
 }
 
+//***********************************************************************
+// osrs_print_running_config - Prints the running config
+//***********************************************************************
+
+void osrs_print_running_config(lio_object_service_fn_t *os, FILE *fd, int print_section_heading)
+{
+    lio_osrs_priv_t *osrs = (lio_osrs_priv_t *)os->priv;
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", osrs->section);
+    fprintf(fd, "type = %s\n", OS_TYPE_REMOTE_SERVER);
+    fprintf(fd, "address = %s\n", osrs->hostname);
+    fprintf(fd, "log_activity = %s\n", osrs->fname_activity);
+    fprintf(fd, "ongoing_interval = %d #seconds\n", osrs->ongoing_interval);
+    fprintf(fd, "max_stream = %d\n", osrs->max_stream);
+    fprintf(fd, "os_local = %s\n", osrs->os_local_section);
+    fprintf(fd, "active_output = %s\n", osrs->fname_active);
+    fprintf(fd, "max_active = %d\n", osrs->max_active);
+    fprintf(fd, "\n");
+
+     if (osrs->os_child) os_print_running_config(osrs->os_child, fd, 1);
+}
 
 //***********************************************************************
 // os_remote_server_destroy
@@ -3070,7 +3089,10 @@ void os_remote_server_destroy(lio_object_service_fn_t *os)
     apr_pool_destroy(osrs->mpool);
 
 
+    free(osrs->section);
     free(osrs->hostname);
+    free(osrs->os_local_section);
+
     if (osrs->fname_active) free(osrs->fname_active);
     free(osrs);
     free(os);
@@ -3092,11 +3114,14 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
     char *cred_args[2];
 
     log_printf(0, "START\n");
-    if (section == NULL) section = "os_remote_server";
+    if (section == NULL) section = osrs_default_options.section;
 
     tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
     tbx_type_malloc_clear(osrs, lio_osrs_priv_t, 1);
     os->priv = (void *)osrs;
+
+    osrs->section = strdup(section);
+    os->print_running_config = osrs_print_running_config;
 
     osrs->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);FATAL_UNLESS(osrs->tpc != NULL);
 
@@ -3112,26 +3137,27 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
    FATAL_UNLESS(osrs->spin != NULL);
 
     //** Get the host name we bind to
-    osrs->hostname= tbx_inip_get_string(fd, section, "address", NULL);
+    osrs->hostname= tbx_inip_get_string(fd, section, "address", osrs_default_options.hostname);
 
     //** Get the activity log file
-    osrs->fname_activity = tbx_inip_get_string(fd, section, "log_activity", NULL);
+    osrs->fname_activity = tbx_inip_get_string(fd, section, "log_activity", osrs_default_options.fname_activity);
     log_printf(5, "section=%s log_activity=%s\n", section, osrs->fname_activity);
 
     //** Ongoing check interval
-    osrs->ongoing_interval = tbx_inip_get_integer(fd, section, "ongoing_interval", 300);
+    osrs->ongoing_interval = tbx_inip_get_integer(fd, section, "ongoing_interval", osrs_default_options.ongoing_interval);
 
     //** Max Stream size
-    osrs->max_stream = tbx_inip_get_integer(fd, section, "max_stream", 1024*1024);
+    osrs->max_stream = tbx_inip_get_integer(fd, section, "max_stream", osrs_default_options.max_stream);
 
     //** Start the child OS.
-    stype = tbx_inip_get_string(fd, section, "os_local", NULL);
+    stype = tbx_inip_get_string(fd, section, "os_local", osrs_default_options.os_local_section);
     if (stype == NULL) {  //** Oops missing child OS
         log_printf(0, "ERROR: Mising child OS  section=%s key=rs_local!\n", section);
         tbx_log_flush();
         free(stype);
         abort();
     }
+    osrs->os_local_section = stype;
 
     //** and load it
     ctype = tbx_inip_get_string(fd, stype, "type", OS_TYPE_FILE);
@@ -3143,7 +3169,6 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
         abort();
     }
     free(ctype);
-    free(stype);
 
     //** Make the dummy credentials
     cred_args[0] = NULL;
@@ -3199,14 +3224,13 @@ lio_object_service_fn_t *object_service_remote_server_create(lio_service_manager
     os->type = OS_TYPE_REMOTE_SERVER;
 
     //** This is for the active tables
-    osrs->fname_active = tbx_inip_get_string(fd, section, "active_output", "/lio/log/os_active.log");
-    osrs->max_active = tbx_inip_get_integer(fd, section, "active_size", 1024);
+    osrs->fname_active = tbx_inip_get_string(fd, section, "active_output", osrs_default_options.fname_active);
+    osrs->max_active = tbx_inip_get_integer(fd, section, "active_size", osrs_default_options.max_active);
     osrs->active_table = apr_hash_make(osrs->mpool);
     osrs->active_lru = tbx_stack_new();
 
     _os_global = os;
-    apr_signal_unblock(SIGUSR1);
-    apr_signal(SIGUSR1, signal_print_active_table);
+    tbx_siginfo_handler_add(SIGUSR1, osrs_siginfo_fn, os);
 
     //** Activate it
     gop_mq_portal_install(osrs->mqc, osrs->server_portal);

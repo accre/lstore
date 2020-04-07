@@ -32,6 +32,7 @@ set(TOOL_OBJS
     atomic_counter.c
     chksum.c
     constructor.c
+    direct_io.c
     dns_cache.c
     iniparse.c
     interval_skiplist.c
@@ -39,7 +40,11 @@ set(TOOL_OBJS
     packer.c
     pigeon_coop.c
     pigeon_hole.c
+    pipe_helper.c
+    que.c
     random.c
+    range_stack.c
+    siginfo.c
     skiplist.c
     stack.c
     stdinarray_iter.c
@@ -57,6 +62,7 @@ set(LSTORE_PROJECT_INCLUDES
     tbx/atomic_counter.h
     tbx/chksum.h
     tbx/constructor_wrapper.h
+    tbx/direct_io.h
     tbx/dns_cache.h
     tbx/fmttypes.h
     tbx/iniparse.h
@@ -69,8 +75,12 @@ set(LSTORE_PROJECT_INCLUDES
     tbx/packer.h
     tbx/pigeon_coop.h
     tbx/pigeon_hole.h
+    tbx/pipe_helper.h
+    tbx/que.h
     tbx/random.h
+    tbx/range_stack.h
     tbx/skiplist.h
+    tbx/siginfo.h
     tbx/stack.h
     tbx/stdinarray_iter.h
     tbx/string_token.h

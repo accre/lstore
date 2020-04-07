@@ -122,7 +122,7 @@ int main(int argc, char **argv)
         printf("           printf(end_obj_fmt, object_name);\n");
         printf("\n");
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
-        printf("    -t  object_types   - Types of objects to list bitwise OR of 1=Files, 2=Directories, 4=symlink, 8=hardlink.  Default is %d.\n", obj_types);
+        lio_print_object_type_options(stdout, obj_types);
         printf("    -vmax max_val      - Max size of attribute value allowed.  Default value is %d\n", max_attr);
         printf("    -ga attr_glob      - Attribute glob string\n");
         printf("    -ra attr_regex     - Attribute regex string\n");
@@ -231,6 +231,7 @@ int main(int argc, char **argv)
     }
 
     it_args = tbx_stdinarray_iter_create(argc-start_index, (const char **)(argv+start_index));
+    ftype = 0; //** Make old GCC happy
     while (1) {
         if (rg_mode == 0) {
             path = tbx_stdinarray_iter_next(it_args);
@@ -265,7 +266,7 @@ int main(int argc, char **argv)
         }
 
         if (it == NULL) {
-            info_printf(lio_ifd, 0, "ERROR creating iterator!\n");
+            fprintf(stderr, "ERROR creating iterator!\n");
             return_code = EIO;
         }
 
@@ -314,6 +315,11 @@ int main(int argc, char **argv)
             lio_os_regex_table_destroy(ro_single);
             ro_single = NULL;
         }
+    }
+
+    if (ftype < 0) {
+        fprintf(stderr, "ERROR getting the next object!\n");
+        return_code = EIO;
     }
 
     log_printf(15, "after main loop\n");

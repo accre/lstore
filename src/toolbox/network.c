@@ -91,7 +91,7 @@ int _write_netstream_block(tbx_ns_t *ns, apr_time_t end_time, tbx_tbuf_t *buffer
 int tcp_bufsize = 0;   //** 0 means use the default TCP buffer sizes for the OS
 
 //*** These are used for counters to track connections
-static tbx_atomic_unit32_t _cuid_counter = 0;
+static tbx_atomic_int_t _cuid_counter = 0;
 //apr_thread_mutex_t *_net_counter_lock = NULL;
 //apr_pool_t *_net_counter_pool = NULL;
 

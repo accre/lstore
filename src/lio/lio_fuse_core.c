@@ -41,6 +41,7 @@
 #include <tbx/assert_result.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
+#include <tbx/siginfo.h>
 #include <tbx/stack.h>
 #include <tbx/string_token.h>
 #include <tbx/type_malloc.h>
@@ -63,6 +64,15 @@
 #include <attr/xattr.h>
 #endif
 
+#ifdef HAS_FUSE3
+    #define FILLER(fn, buf, dentry, stat, off)  fn(buf, dentry, stat, off, FUSE_FILL_DIR_PLUS)
+    #define LFS_INIT() void *lfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg)
+    #define LFS_READDIR() int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi, enum fuse_readdir_flags flags)
+#else
+    #define FILLER(fn, buf, dentry, stat, off)  fn(buf, dentry, stat, off)
+    #define LFS_INIT() void *lfs_init(struct fuse_conn_info *conn)
+    #define LFS_READDIR() int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi)
+#endif
 
 //#define lfs_lock(lfs)  log_printf(0, "lfs_lock\n"); tbx_log_flush(); apr_thread_mutex_lock((lfs)->lock)
 //#define lfs_unlock(lfs) log_printf(0, "lfs_unlock\n");  tbx_log_flush(); apr_thread_mutex_unlock((lfs)->lock)
@@ -102,12 +112,6 @@ typedef struct {
     int state;
 } lfs_dir_iter_t;
 
-typedef struct {
-    ex_off_t offset;
-    ex_off_t len;
-    uLong adler32;
-} lfs_adler32_t;
-
 lio_file_handle_t *_lio_get_file_handle(lio_config_t *lc, ex_id_t vid);
 
 
@@ -124,7 +128,6 @@ mode_t ftype_lio2fuse(int ftype)
     } else if (ftype & OS_OBJECT_DIR_FLAG) {
         mode = S_IFDIR | 0755;
     } else {
-//     mode = S_IFREG | 0444;
         mode = S_IFREG | 0666;  //** Make it so that everything has RW access
     }
 
@@ -136,7 +139,7 @@ mode_t ftype_lio2fuse(int ftype)
 //   NOTE: All the val[*] strings are free'ed!
 //*************************************************************************
 
-void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char **val, int *v_size)
+void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char **val, int *v_size, int get_lock)
 {
     int i, n, readlink;
     lio_fuse_open_file_t *fop;
@@ -182,23 +185,25 @@ void _lfs_parse_stat_vals(lio_fuse_t *lfs, char *fname, struct stat *stat, char 
 
     //** Size
     ino = 0;
-    lfs_lock(lfs);
+    len = -1;
+    fh = NULL;
+    if (get_lock == 1) lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
-    if (fop != NULL) ino = fop->sid;
-    lfs_unlock(lfs);
-
-    len = 0;
-    if (val[3] != NULL) sscanf(val[3], XOT, &len);
-    if (ino != 0) { //** Got an open file
-        lio_lock(lfs->lc);
+    if (fop != NULL) {
+        ino = fop->sid;
         fh = _lio_get_file_handle(lfs->lc, ino);
         if (fh) len = segment_size(fh->seg);
-        lio_unlock(lfs->lc);
+    }
+    if (get_lock == 1) lfs_unlock(lfs);
+
+    if (len == -1) {
+        len = 0;
+        if (val[3] != NULL) sscanf(val[3], XOT, &len);
     }
 
     stat->st_size = (n & OS_OBJECT_SYMLINK_FLAG) ? readlink : len;
-    stat->st_blksize = 4096;
-    stat->st_blocks = stat->st_size / 512;
+    stat->st_blksize = 6*16*1024;
+    stat->st_blocks = stat->st_size / stat->st_blksize;
     if (stat->st_size < 1024) stat->st_blksize = 1024;
 
     //** N-links
@@ -238,7 +243,7 @@ lio_fuse_t *lfs_get_context()
 // lfs_stat - Does a stat on the file/dir
 //*************************************************************************
 
-int lfs_stat(const char *fname, struct stat *stat)
+int lfs_stat(const char *fname, struct stat *stat, struct fuse_file_info *fi)
 {
     lio_fuse_t *lfs = lfs_get_context();
     char *val[_inode_key_size];
@@ -247,18 +252,28 @@ int lfs_stat(const char *fname, struct stat *stat)
     log_printf(1, "fname=%s\n", fname);
     tbx_log_flush();
 
+    //** The whole remote fetch and merging with open files is locked to
+    //** keep quickly successive stat calls to not get stale information
+    lfs_lock(lfs);
     for (i=0; i<_inode_key_size; i++) v_size[i] = -lfs->lc->max_attr;
     err = lio_get_multiple_attrs(lfs->lc, lfs->lc->creds, fname, NULL, _inode_keys, (void **)val, v_size, _inode_key_size);
 
     if (err != OP_STATE_SUCCESS) {
+        lfs_unlock(lfs);
         return(-ENOENT);
     }
-    _lfs_parse_stat_vals(lfs, (char *)fname, stat, val, v_size);
+    _lfs_parse_stat_vals(lfs, (char *)fname, stat, val, v_size, 0);
+    lfs_unlock(lfs);
 
     log_printf(1, "END fname=%s err=%d\n", fname, err);
     tbx_log_flush();
 
     return(0);
+}
+
+int lfs_stat2(const char *fname, struct stat *stat)
+{
+    return(lfs_stat(fname, stat, NULL));
 }
 
 //*************************************************************************
@@ -274,17 +289,19 @@ int lfs_closedir_real(lfs_dir_iter_t *dit)
     if (dit->dot_path) free(dit->dot_path);
     if (dit->dotdot_path) free(dit->dotdot_path);
 
-    //** Cyle through releasing all the entries
-    while ((de = (lfs_dir_entry_t *)tbx_stack_pop(dit->stack)) != NULL) {
-        log_printf(0, "fname=%s\n", de->dentry);
-        tbx_log_flush();
-        free(de->dentry);
-        free(de);
+    if (dit->stack) {
+        //** Cyle through releasing all the entries
+        while ((de = (lfs_dir_entry_t *)tbx_stack_pop(dit->stack)) != NULL) {
+            log_printf(0, "fname=%s\n", de->dentry);
+            tbx_log_flush();
+            free(de->dentry);
+            free(de);
+        }
+
+        tbx_stack_free(dit->stack, 0);
     }
 
-    tbx_stack_free(dit->stack, 0);
-
-    lio_destroy_object_iter(dit->lfs->lc, dit->it);
+    if (dit->it) lio_destroy_object_iter(dit->lfs->lc, dit->it);
     lio_os_regex_table_destroy(dit->path_regex);
     free(dit);
 
@@ -325,6 +342,10 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
     dit->path_regex = lio_os_path_glob2regex(path);
 
     dit->it = lio_create_object_iter_alist(dit->lfs->lc, dit->lfs->lc->creds, dit->path_regex, NULL, OS_OBJECT_ANY_FLAG, 0, _inode_keys, (void **)dit->val, dit->v_size, _inode_key_size);
+    if (dit->it == NULL) {
+        lfs_closedir_real(dit);
+        return(-ENOENT);
+    }
 
     dit->stack = tbx_stack_new();
 
@@ -333,7 +354,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
     //** Add "."
     dit->dot_path = strdup(fname);
     tbx_type_malloc(de, lfs_dir_entry_t, 1);
-    if (lfs_stat(fname, &(de->stat)) != 0) {
+    if (lfs_stat(fname, &(de->stat), NULL) != 0) {
         lfs_closedir_real(dit);
         free(de);
         return(-ENOENT);
@@ -353,7 +374,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
     log_printf(1, "dot=%s dotdot=%s\n", dit->dot_path, dit->dotdot_path);
 
     tbx_type_malloc(de2, lfs_dir_entry_t, 1);
-    if (lfs_stat(dit->dotdot_path, &(de2->stat)) != 0) {
+    if (lfs_stat(dit->dotdot_path, &(de2->stat), NULL) != 0) {
         lfs_closedir_real(dit);
         free(de2);
         return(-ENOENT);
@@ -370,7 +391,7 @@ int lfs_opendir(const char *fname, struct fuse_file_info *fi)
 // lfs_readdir - Returns the next file in the directory
 //*************************************************************************
 
-int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off, struct fuse_file_info *fi)
+LFS_READDIR()
 {
     lfs_dir_iter_t *dit= (lfs_dir_iter_t *)fi->fh;
     lfs_dir_entry_t *de;
@@ -380,6 +401,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
     apr_time_t now;
     double dt;
     int off2 = off;
+
     log_printf(1, "dname=%s off=%d stack_size=%d\n", dname, off2, tbx_stack_count(dit->stack));
     tbx_log_flush();
     now = apr_time_now();
@@ -398,7 +420,7 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
 
         de = tbx_stack_get_current_data(dit->stack);
         while (de != NULL) {
-            if (filler(buf, de->dentry, &(de->stat), off) == 1) {
+            if (FILLER(filler, buf, de->dentry, &(de->stat), off) == 1) {
                 dt = apr_time_now() - now;
                 dt /= APR_USEC_PER_SEC;
                 log_printf(1, "dt=%lf\n", dt);
@@ -420,23 +442,27 @@ int lfs_readdir(const char *dname, void *buf, fuse_fill_dir_t filler, off_t off,
             dt = apr_time_now() - now;
             dt /= APR_USEC_PER_SEC;
             off2=off;
-            log_printf(15, "dname=%s NOTHING LEFT off=%d dt=%lf\n", dname,off2, dt);
-            return(0);
+            if (ftype == 0) {
+                log_printf(15, "dname=%s NOTHING LEFT off=%d dt=%lf\n", dname,off2, dt);
+            } else {
+                log_printf(15, "dname=%s ERROR getting next object off=%d dt=%lf\n", dname,off2, dt);
+            }
+            return((ftype == 0) ? 0 : -EIO);
         }
 
         tbx_type_malloc(de, lfs_dir_entry_t, 1);
         de->dentry = strdup(fname+prefix_len+1);
-        _lfs_parse_stat_vals(dit->lfs, fname, &(de->stat), dit->val, dit->v_size);
+        _lfs_parse_stat_vals(dit->lfs, fname, &(de->stat), dit->val, dit->v_size, 1);
         free(fname);
         log_printf(1, "next fname=%s ftype=%d prefix_len=%d ino=" XIDT " off=" XOT "\n", de->dentry, ftype, prefix_len, de->stat.st_ino, off);
 
         tbx_stack_move_to_bottom(dit->stack);
         tbx_stack_insert_below(dit->stack, de);
 
-        if (filler(buf, de->dentry, &(de->stat), off) == 1) {
+        if (FILLER(filler, buf, de->dentry, &(de->stat), off) == 1) {
             dt = apr_time_now() - now;
             dt /= APR_USEC_PER_SEC;
-            log_printf(1, "dt=%lf\n", dt);
+            log_printf(15, "BUFFER FULL dt=%lf\n", dt);
             return(0);
         }
 
@@ -609,6 +635,9 @@ int lfs_open(const char *fname, struct fuse_file_info *fi)
     fop->ref_count++;
     lfs_unlock(lfs);
 
+    //** See if we have WQ enabled
+    if (lfs->n_merge > 0) lio_wq_enable(fd, lfs->n_merge);
+
     return(0);
 }
 
@@ -627,6 +656,8 @@ int lfs_release(const char *fname, struct fuse_file_info *fi)
 
     remove_on_close = 0;
 
+    //** We lock overthe whole close process to make sure an immediate stat call 
+    //** doesn't get stale information.
     lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, fname, APR_HASH_KEY_STRING);
     if (fop) {
@@ -691,7 +722,11 @@ int lfs_read(const char *fname, char *buf, size_t size, off_t off, struct fuse_f
     now = apr_time_now();
 
     //** Do the read op
+    tbx_atomic_inc(lfs->read_cmds_inflight);
+    tbx_atomic_add(lfs->read_bytes_inflight, size);
     nbytes = lio_read(fd, buf, size, off, lfs->rw_hints);
+    tbx_atomic_dec(lfs->read_cmds_inflight);
+    tbx_atomic_sub(lfs->read_bytes_inflight, size);
 
     if (tbx_log_level() > 0) {
         t2 = size+off-1;
@@ -716,16 +751,36 @@ int lfs_write(const char *fname, const char *buf, size_t size, off_t off, struct
     lio_fuse_t *lfs = lfs_get_context();
     ex_off_t nbytes;
     lio_fd_t *fd;
+    apr_time_t now;
+    double dt;
 
     fd = (lio_fd_t *)fi->fh;
 
+    ex_off_t t1, t2;
+    t1 = size;
+    t2 = off;
+
+    log_printf(1, "fname=%s size=" XOT " off=" XOT " fd=%p\n", fname, t1, t2, fd);
+    tbx_log_flush();
     if (fd == NULL) {
         log_printf(0, "ERROR: Got a null LFS handle\n");
         return(-EBADF);
     }
 
+    now = apr_time_now();
+
     //** Do the write op
+    tbx_atomic_inc(lfs->write_cmds_inflight);
+    tbx_atomic_add(lfs->write_bytes_inflight, size);
     nbytes = lio_write(fd, (char *)buf, size, off, lfs->rw_hints);
+    tbx_atomic_dec(lfs->write_cmds_inflight);
+    tbx_atomic_sub(lfs->write_bytes_inflight, size);
+
+    dt = apr_time_now() - now;
+    dt /= APR_USEC_PER_SEC;
+    log_printf(1, "END fname=%s seg=" XIDT " size=" XOT " off=%zu nbytes=" XOT " dt=%lf\n", fname, segment_id(fd->fh->seg), t1, t2, nbytes, dt);
+    tbx_log_flush();
+
     return(nbytes);
 }
 
@@ -761,6 +816,42 @@ int lfs_flush(const char *fname, struct fuse_file_info *fi)
     tbx_log_flush();
 
     return(0);
+}
+
+
+//*****************************************************************
+// lfs_copy_file_range - Copies data between files
+//*****************************************************************
+
+ssize_t lfs_copy_file_range(const char *path_in,  struct fuse_file_info *fi_in,  off_t offset_in,
+                            const char *path_out, struct fuse_file_info *fi_out, off_t offset_out, size_t size, int flags)
+{
+    lio_fuse_t *lfs = lfs_get_context();
+    int err;
+    lio_fd_t *fd_in, *fd_out;
+
+    log_printf(1, "START copy_file_range src=%s dest=%s\n", path_in, path_out);
+
+    fd_in = (lio_fd_t *)fi_in->fh;
+    if (fd_in == NULL) {
+        log_printf(0, "ERROR: Got a null LFS fd_in handle\n");
+        return(-EBADF);
+    }
+
+    fd_out = (lio_fd_t *)fi_out->fh;
+    if (fd_out == NULL) {
+        log_printf(0, "ERROR: Got a null LFS fd_out handle\n");
+        return(-EBADF);
+    }
+
+    //** Do the copy op
+    err = gop_sync_exec(lio_cp_lio2lio_gop(fd_in, fd_out, 0, NULL, offset_in, offset_out, size, 0, lfs->rw_hints));
+    if (err != OP_STATE_SUCCESS) {
+        return(-EIO);
+    }
+
+    return(size);
+
 }
 
 //*****************************************************************
@@ -801,14 +892,16 @@ int lfs_fsync(const char *fname, int datasync, struct fuse_file_info *fi)
 // lfs_rename - Renames a file
 //*************************************************************************
 
-int lfs_rename(const char *oldname, const char *newname)
+int lfs_rename(const char *oldname, const char *newname, unsigned int flags)
 {
     lio_fuse_t *lfs = lfs_get_context();
     lio_fuse_open_file_t *fop;
     gop_op_status_t status;
 
-    log_printf(1, "oldname=%s newname=%s\n", oldname, newname);
+    log_printf(1, "oldname=%s newname=%s flags=%ud\n", oldname, newname, flags);
     tbx_log_flush();
+
+    if (flags) return(-EINVAL);  //** We don't currently do anything with the flags
 
     lfs_lock(lfs);
     fop = apr_hash_get(lfs->open_files, oldname, APR_HASH_KEY_STRING);
@@ -829,29 +922,12 @@ int lfs_rename(const char *oldname, const char *newname)
     return(0);
 }
 
-
-//*****************************************************************
-// lfs_ftruncate - Truncate the file associated with the FD
 //*****************************************************************
 
-int lfs_ftruncate(const char *fname, off_t new_size, struct fuse_file_info *fi)
+int lfs_rename2(const char *oldname, const char *newname)
 {
-    lio_fd_t *fd;
-    int err;
-
-    log_printf(1, "fname=%s\n", fname);
-    tbx_log_flush();
-
-    fd = (lio_fd_t *)fi->fh;
-    if (fd == NULL) {
-        return(-EBADF);
-    }
-
-    err = gop_sync_exec(lio_truncate_gop(fd, new_size));
-
-    return((err == OP_STATE_SUCCESS) ? 0 : -EIO);
+    return(lfs_rename(oldname, newname, 0));
 }
-
 
 //*****************************************************************
 // lfs_truncate - Truncate the file
@@ -891,10 +967,35 @@ int lfs_truncate(const char *fname, off_t new_size)
 }
 
 //*****************************************************************
+// lfs_ftruncate - Truncate the file associated with the FD
+//*****************************************************************
+
+int lfs_ftruncate(const char *fname, off_t new_size, struct fuse_file_info *fi)
+{
+    lio_fd_t *fd;
+    int err;
+
+    log_printf(1, "fname=%s\n", fname);
+    tbx_log_flush();
+
+    if (fi == NULL) return(lfs_truncate(fname, new_size));
+
+    fd = (lio_fd_t *)fi->fh;
+    if (fd == NULL) {
+        return(-EBADF);
+    }
+
+    err = gop_sync_exec(lio_truncate_gop(fd, new_size));
+
+    return((err == OP_STATE_SUCCESS) ? 0 : -EIO);
+}
+
+
+//*****************************************************************
 // lfs_utimens - Sets the access and mod times in ns
 //*****************************************************************
 
-int lfs_utimens(const char *fname, const struct timespec tv[2])
+int lfs_utimens(const char *fname, const struct timespec tv[2], struct fuse_file_info *fi)
 {
     lio_fuse_t *lfs = lfs_get_context();
     char buf[1024];
@@ -925,6 +1026,13 @@ int lfs_utimens(const char *fname, const struct timespec tv[2])
     }
 
     return(0);
+}
+
+//*****************************************************************
+
+int lfs_utimens2(const char *fname, const struct timespec tv[2])
+{
+    return(lfs_utimens(fname, tv, NULL));
 }
 
 //*****************************************************************
@@ -1237,21 +1345,26 @@ int lfs_getxattr(const char *fname, const char *name, char *buf, size_t size, ui
         }
     }
 
-    if (v_size < 0) v_size = 0;  //** No attribute
-
+    err = 0;
+    if (v_size < 0) {
+        v_size = 0;  //** No attribute
+        err = -ENODATA;
+    }
+    
     if (size == 0) {
-        log_printf(1, "SIZE bpos=%d buf=%s\n", v_size, val);
+        log_printf(1, "SIZE bpos=%d buf=%.*s\n", v_size, v_size, val);
     } else if ((int)size >= v_size) {
-        log_printf(1, "FULL bpos=%d buf=%s\n",v_size, val);
+        log_printf(1, "FULL bpos=%d buf=%.*s\n",v_size, v_size, val);
         memcpy(buf, val, v_size);
     } else {
-        log_printf(1, "ERANGE bpos=%d buf=%s\n", v_size, val);
+        log_printf(1, "ERANGE bpos=%d buf=%.*s\n", v_size, v_size, val);
     }
 
     if (val != NULL) free(val);
-    return(v_size);
+    return((v_size == 0) ? err : v_size);
 }
 #endif //HAVE_XATTR
+
 //*****************************************************************
 // lfs_setxattr - Sets a extended attribute
 //*****************************************************************
@@ -1267,7 +1380,7 @@ int lfs_setxattr(const char *fname, const char *name, const char *fval, size_t s
     int v_size, err;
 
     v_size= size;
-    log_printf(1, "fname=%s size=%zu attr_name=%s\n", fname, size, name);
+    log_printf(1, "fname=%s flags=%d size=%zu attr_name=%s\n", fname, flags, size, name);
     tbx_log_flush();
 
     if (flags != 0) { //** Got an XATTR_CREATE/XATTR_REPLACE
@@ -1440,8 +1553,8 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
     free(config);
 
     fs->f_bsize = 4096;
-    fs->f_blocks = space.total_up / 4096;
-    fs->f_bfree = space.free_up / 4096;
+    fs->f_blocks = space.total_up / fs->f_bsize;;
+    fs->f_bfree = space.free_up / fs->f_bsize;
     fs->f_bavail = fs->f_bfree;
     fs->f_files = 1;
     fs->f_ffree = 10*1024*1024;
@@ -1450,6 +1563,26 @@ int lfs_statfs(const char *fname, struct statvfs *fs)
     return(0);
 }
 
+//*************************************************************************
+// lio_fuse_info_fn - Signal handler to dump info
+//*************************************************************************
+
+void lio_fuse_info_fn(void *arg, FILE *fd)
+{
+    lio_fuse_t *lfs = arg;
+    int n;
+    char ppbuf[100];
+
+    fprintf(fd, "---------------------------------- LFS config start --------------------------------------------\n");
+    fprintf(fd, "mount_point = %s\n", lfs->mount_point);
+    fprintf(fd, "enable_tape = %d\n", lfs->enable_tape);
+    fprintf(fd, "n_merge = %d\n", lfs->n_merge);
+    n = tbx_atomic_get(lfs->write_cmds_inflight); fprintf(fd, "write_cmds_inflight = %d\n", n);
+    n = tbx_atomic_get(lfs->write_bytes_inflight); fprintf(fd, "write_bytes_inflight = %s\n", tbx_stk_pretty_print_double_with_scale(1024, n, ppbuf));
+    n = tbx_atomic_get(lfs->read_cmds_inflight); fprintf(fd, "read_cmds_inflight = %d\n", n);
+    n = tbx_atomic_get(lfs->read_bytes_inflight); fprintf(fd, "read_bytes_inflight = %s\n", tbx_stk_pretty_print_double_with_scale(1024, n, ppbuf));
+    fprintf(fd, "---------------------------------- LFS config end --------------------------------------------\n");
+}
 
 //*************************************************************************
 //  lio_fuse_init - Creates a lowlevel fuse handle for use
@@ -1468,6 +1601,7 @@ void *lfs_init_real(struct fuse_conn_info *conn,
 {
     lio_fuse_t *lfs;
     char *section =  "lfs";
+    ex_off_t n;
 
     lio_fuse_init_args_t *init_args;
     lio_fuse_init_args_t real_args;
@@ -1515,6 +1649,20 @@ void *lfs_init_real(struct fuse_conn_info *conn,
     lfs->mount_point_len = strlen(init_args->mount_point);
 
     lfs->enable_tape = tbx_inip_get_integer(lfs->lc->ifd, section, "enable_tape", 0);
+    lfs->n_merge = tbx_inip_get_integer(lfs->lc->ifd, section, "n_merge", 0);
+    n = tbx_inip_get_integer(lfs->lc->ifd, section, "max_write", -1);
+    if (n > -1) conn->max_write = n;
+    n = tbx_inip_get_integer(lfs->lc->ifd, section, "congestion_threshold", -1);
+    if (n > -1) conn->congestion_threshold = n;
+    n = tbx_inip_get_integer(lfs->lc->ifd, section, "max_background", -1);
+    if (n > -1) conn->max_background = n;
+
+#ifdef HAS_FUSE3
+    n = tbx_inip_get_integer(lfs->lc->ifd, section, "max_read", -1);
+    if (n > -1) conn->max_read = n;
+#endif
+    n = tbx_inip_get_integer(lfs->lc->ifd, section, "max_readahead", -1);
+    if (n > -1) conn->max_readahead = n;
 
     apr_pool_create(&(lfs->mpool), NULL);
     apr_thread_mutex_create(&(lfs->lock), APR_THREAD_MUTEX_DEFAULT, lfs->mpool);
@@ -1529,12 +1677,18 @@ void *lfs_init_real(struct fuse_conn_info *conn,
     //lfs->fops = ctx->fuse->fuse_fs->op;
     lfs->fops = lfs_fops;
 
+    tbx_siginfo_handler_add(SIGUSR1, lio_fuse_info_fn, lfs);
+
     log_printf(15, "END\n");
     return(lfs); //
 }
 
-void *lfs_init(struct fuse_conn_info *conn)
+//** See macro for actual definition
+LFS_INIT()
 {
+#ifdef HAS_FUSE3
+    cfg->use_ino = 0;
+#endif
     return lfs_init_real(conn,0,NULL,NULL);
 }
 
@@ -1558,7 +1712,17 @@ void lfs_destroy(void *private_data)
         return;
     }
 
+    tbx_siginfo_handler_remove(SIGUSR1, lio_fuse_info_fn, lfs);
+
     //** We're ignoring cleaning up the open files table since were only using this on FUSE and FUSE should have closed all files
+    //** Check and make sure FUSE closed all the files
+    lio_fuse_open_file_t *fop;
+    apr_hash_index_t *hi;
+    for (hi=apr_hash_first(lfs->mpool, lfs->open_files); hi; hi = apr_hash_next(hi)) {
+        apr_hash_this(hi, NULL, NULL, (void **)&fop);
+        log_printf(0, "ERROR: LFS_OPEN_FILE: fname=%s sid= " XIDT " ref=%d remove=%d\n", fop->fname, fop->sid, fop->ref_count, fop->remove_on_close);
+        tbx_log_flush();
+    }
 
     //** Clean up everything else
     if (lfs->id != NULL) free (lfs->id);
@@ -1579,11 +1743,19 @@ struct fuse_operations lfs_fops = { //All lfs instances should use the same func
     .opendir = lfs_opendir,
     .releasedir = lfs_closedir,
     .readdir = lfs_readdir,
+#ifdef HAS_FUSE3
+    .truncate = lfs_ftruncate,
     .getattr = lfs_stat,
     .utimens = lfs_utimens,
+    .rename = lfs_rename,
+    .copy_file_range = lfs_copy_file_range,
+#else
     .truncate = lfs_truncate,
     .ftruncate = lfs_ftruncate,
-    .rename = lfs_rename,
+    .getattr = lfs_stat2,
+    .utimens = lfs_utimens2,
+    .rename = lfs_rename2,
+#endif
     .mknod = lfs_mknod,
     .mkdir = lfs_mkdir,
     .unlink = lfs_unlink,

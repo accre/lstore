@@ -16,6 +16,7 @@
 
 #define _log_module_index 112
 
+#include <ctype.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -315,15 +316,13 @@ int64_t split_token_into_number_and_scale(char *token)
 
 int64_t tbx_stk_string_get_integer(char *value)
 {
-    char *string;
+    char string[100];
     int64_t scale, n;
 
-    string = strdup(value);
+    strncpy(string, value, sizeof(string));
     scale = split_token_into_number_and_scale(string);
-//printf("token=%s scale=" I64T "\n", string, scale);
     sscanf(string, I64T, &n);
     n = scale * n;
-    free(string);
 
     return(n);
 }
@@ -335,17 +334,78 @@ int64_t tbx_stk_string_get_integer(char *value)
 
 double tbx_stk_string_get_double(char *value)
 {
-    char *string;
+    char string[100];
     double scale, n;
 
-    string = strdup(value);
+    strncpy(string, value, sizeof(string));
     scale = split_token_into_number_and_scale(string);
-//printf("token=%s scale=" I64T "\n", string, scale);
     sscanf(string, "%lf", &n);
     n = scale * n;
-    free(string);
 
     return(n);
+}
+
+//***********************************************************************
+//   tbx_stk_string_get_time - Parses the string using the time format
+//     converts it to apr_time_t format.
+//
+//***********************************************************************
+
+apr_time_t tbx_stk_string_get_time(char *value)
+{
+    char string[100];
+    char unit;
+    int i, j, n, t;
+    apr_time_t dt;
+
+    strncpy(string, value, sizeof(string));
+    n = strlen(string);
+
+    dt = 0;
+    j = 0;
+    for (i=0; i<n; i++) {
+        if (!isdigit(string[i])) {
+            unit = string[i];
+            string[i] = 0;
+            sscanf(string+j, "%d", &t);
+            switch (unit) {
+            case 'D':
+            case 'd':
+                dt += t*apr_time_from_sec(24*3600);
+                break;
+            case 'H':
+            case 'h':
+                dt += t*apr_time_from_sec(3600);
+                break;
+            case 'M':
+            case 'm':
+                dt += t*apr_time_from_sec(60);
+                break;
+            case 'S':
+            case 's':
+                dt += t*apr_time_from_sec(1);
+                break;
+            case 'U':
+            case 'u':
+                dt += t;
+                break;
+            default:
+                log_printf(0, "Invalid Time specification: %c\n", unit);
+                fprintf(stderr, "Invalid Time specification: %c\n", unit);
+                return(0);
+            }
+
+            j = i+1;
+        }
+    }
+
+    //** Check if we have a bare number if so assume it's in apr_time_t format already
+    if (j<n) {
+        sscanf(string+j, "%d", &t);
+        dt += t;
+    }
+
+    return(dt);
 }
 
 //***********************************************************************
@@ -431,7 +491,9 @@ char *tbx_stk_pretty_print_double_with_scale(int base, double value, char *buffe
 
     n = value;
     for (i=0; i<7; i++) {
-        if (fabs(n) < base) break;
+        if (fabs(n) < base) {
+            if (fabs(n) < 1000) break;
+        }
         n = n / base;
     }
 
@@ -449,6 +511,41 @@ char *tbx_stk_pretty_print_double_with_scale(int base, double value, char *buffe
     return(buffer);
 }
 
+//***********************************************************************
+//
+//  tbx_stk_pretty_print_time - Takes an APR time and prints it to the
+//     supplied string in a parsable simple format.  By default days
+//     are not printed unless use_days=1.
+//
+//     NOTE: If buffer==NULL then a new string is created and returned
+//           which must be freed.
+//
+//***********************************************************************
+
+char *tbx_stk_pretty_print_time(apr_time_t dt, int use_days, char *buffer)
+{
+    int days, hours, min, sec, usec;
+
+    if (buffer == NULL) {
+        tbx_type_malloc(buffer, char, 50);
+    }
+
+    hours  = apr_time_sec(dt) / 3600;
+    min = (apr_time_sec(dt) / 60) % 60;
+    sec = apr_time_sec(dt) % 60;
+    usec = dt % apr_time_from_sec(1);
+
+    if (use_days) {
+        days = hours / 24;
+        hours = hours % 24;
+
+        sprintf(buffer, "%dd%02dh%02dm%02ds%06du", days, hours, min, sec,usec);
+    } else {
+        sprintf(buffer, "%dh%02dm%02ds%06du", hours, min, sec,usec);
+    }
+
+    return(buffer);
+}
 
 //***********************************************************************
 // string_trim - TRims the whitespace around a string

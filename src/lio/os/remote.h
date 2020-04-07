@@ -94,6 +94,8 @@ lio_object_service_fn_t *object_service_remote_client_create(lio_service_manager
 #define OSR_ONGOING_FSCK_ITER   3
 
 struct lio_osrs_priv_t {
+    char *section;
+    char *os_local_section;
     lio_object_service_fn_t *os_child;  //** Actual OS used
     apr_thread_mutex_t *lock;
     apr_thread_mutex_t *abort_lock;
@@ -119,6 +121,9 @@ struct lio_osrs_priv_t {
 };
 
 struct lio_osrc_priv_t {
+    char *section;
+    char *temp_section;
+    char *authn_section;
     lio_object_service_fn_t *os_temp;  //** Used only for initial debugging of the client/server
     lio_object_service_fn_t *os_remote;//** Used only for initial debugging of the client/server
     apr_thread_mutex_t *lock;

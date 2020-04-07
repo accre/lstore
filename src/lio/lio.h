@@ -26,6 +26,7 @@
 #include <lio/visibility.h>
 #include <sys/stat.h>
 #include <tbx/log.h>
+#include <zlib.h>
 
 #include "blacklist.h"
 
@@ -33,21 +34,18 @@
 extern "C" {
 #endif
 
+void lio_open_files_info_fn(void *arg, FILE *fd);
 
 extern char *_lio_stat_keys[];
 #define  _lio_stat_key_size 7
 
-
 extern char *_lio_exe_name;  //** Executable name
-
-
 
 struct lio_unified_object_iter_t {
     lio_path_tuple_t tuple;
     os_object_iter_t *oit;
     local_object_iter_t *lit;
 };
-
 
 #define LIO_WRITE_MODE     2
 #define LIO_TRUNCATE_MODE  4
@@ -56,31 +54,61 @@ struct lio_unified_object_iter_t {
 #define LIO_EXCL_MODE     32
 #define LIO_RW_MODE       (LIO_READ_MODE|LIO_WRITE_MODE)
 
-
 #define lio_lock(s) apr_thread_mutex_lock((s)->lock)
 #define lio_unlock(s) apr_thread_mutex_unlock((s)->lock)
+
+struct wq_context_s;
+typedef struct wq_context_s wq_context_t;
 
 struct lio_file_handle_t {  //** Shared file handle
     lio_exnode_t *ex;
     lio_segment_t *seg;
     lio_config_t *lc;
+    wq_context_t *wq_ctx;
+    char *fname;  //** This is just used for dumping info and represents the name used for adding the FH
     ex_id_t vid;
     int ref_count;
     int remove_on_close;
     ex_off_t readahead_end;
-    tbx_atomic_unit32_t modified;
+    tbx_atomic_int_t modified;
     tbx_list_t *write_table;
 };
 
+typedef struct {
+    ex_off_t offset;
+    ex_off_t len;
+    uLong adler32;
+} lfs_adler32_t;
+
+typedef struct {
+    lio_fd_t *fd;
+    int n_iov;
+    ex_tbx_iovec_t *iov;
+    tbx_tbuf_t *buffer;
+    lio_segment_rw_hints_t *rw_hints;
+    ex_tbx_iovec_t iov_dummy;
+    tbx_tbuf_t buffer_dummy;
+    ex_off_t boff;
+} lio_rw_op_t;
+
+typedef gop_op_generic_t *(lio_rw_ex_gop_t)(lio_rw_op_t *op);
 
 struct lio_fd_t {  //** Individual file descriptor
     lio_config_t *lc;
     lio_file_handle_t *fh;  //** Shared handle
+    tbx_stack_t *wq;
     lio_creds_t *creds;
     char *path;
+    lio_rw_ex_gop_t *read_gop;
+    lio_rw_ex_gop_t *write_gop;
     int mode;         //** R/W mode
     ex_off_t curr_offset;
 };
+
+wq_context_t *wq_context_create(lio_fd_t *fd, int max_tasks);
+void wq_context_destroy(wq_context_t *ctx);
+void wq_backend_shutdown(wq_context_t *ctx);
+gop_op_generic_t *wq_op_new(wq_context_t *ctx, lio_rw_op_t *rw_op, int rw_mode);
 
 extern tbx_sl_compare_t ex_id_compare;
 
@@ -99,12 +127,16 @@ int lio_cp_create_dir(tbx_list_t *table, lio_path_tuple_t tuple);
 
 void lc_object_remove_unused(int remove_all_unused);
 lio_path_tuple_t lio_path_auto_fuse_convert(lio_path_tuple_t *ltuple);
-int lio_parse_path(char *startpath, char **user, char **service, char **path);
+int lio_parse_path(char *startpath, char **user, char **mq_name, char **host, int *port, char **cfg, char **section, char **path);
+LIO_API int lio_parse_path_test();
 lio_fn_t *lio_core_create();
 void lio_core_destroy(lio_config_t *lio);
-lio_config_t *lio_create(char *fname, char *section, char *user, char *exe_name);
+lio_config_t *lio_create(tbx_inip_file_t *ifd, char *section, char *user, char *obj_name, char *exe_name);
 void lio_destroy(lio_config_t *lio);
 const char *lio_client_version();
+
+void lio_wq_shutdown();
+void lio_wq_startup(int n_parallel);
 
 #ifdef __cplusplus
 }

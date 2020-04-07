@@ -63,11 +63,14 @@ struct lio_osfile_priv_t {
     int hardlink_path_len;
     int internal_lock_size;
     int hardlink_dir_size;
-    tbx_atomic_unit32_t hardlink_count;
+    tbx_atomic_int_t hardlink_count;
     char *base_path;
     char *file_path;
     char *hardlink_path;
     char *host_id;
+    char *section;
+    char *authn_section;
+    char *authz_section;
     gop_thread_pool_context_t *tpc;
     apr_thread_mutex_t **internal_lock;
     lio_os_authz_t *osaz;

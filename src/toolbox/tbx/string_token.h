@@ -18,6 +18,7 @@
 #ifndef ACCRE_STRING_TOKEN_H_INCLUDED
 #define ACCRE_STRING_TOKEN_H_INCLUDED
 
+#include <apr_time.h>
 #include <inttypes.h>
 #include <tbx/visibility.h>
 
@@ -41,8 +42,10 @@ TBX_API char *tbx_stk_pretty_print_double_with_scale(int base,
                                                         double value,
                                                         char *buffer);
 TBX_API char *tbx_stk_pretty_print_int_with_scale(int64_t value, char *buffer);
+TBX_API char *tbx_stk_pretty_print_time(apr_time_t dt, int use_days, char *buffer);
 TBX_API double tbx_stk_string_get_double(char *value);
 TBX_API int64_t tbx_stk_string_get_integer(char *value);
+TBX_API apr_time_t tbx_stk_string_get_time(char *value);
 TBX_API char *tbx_stk_string_token(char *str,
                                     const char *sep,
                                     char **last,

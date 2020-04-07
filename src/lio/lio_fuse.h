@@ -51,22 +51,29 @@ struct lio_fuse_t;
 
 
 struct lio_fuse_t {
-int enable_tape;
-int shutdown;
-int mount_point_len;
-tbx_atomic_unit32_t counter;
-tbx_list_t *ino_index;
-lio_config_t *lc;
-apr_pool_t *mpool;
-apr_thread_mutex_t *lock;
-apr_hash_t *open_files;
-struct fuse_operations fops;
-char *id;
-char *mount_point;
-lio_segment_rw_hints_t *rw_hints;
+    int enable_tape;
+    int shutdown;
+    int mount_point_len;
+    int n_merge;
+    tbx_atomic_int_t read_cmds_inflight;
+    tbx_atomic_int_t read_bytes_inflight;
+    tbx_atomic_int_t write_cmds_inflight;
+    tbx_atomic_int_t write_bytes_inflight;
+    lio_config_t *lc;
+    apr_pool_t *mpool;
+    apr_thread_mutex_t *lock;
+    apr_hash_t *open_files;
+    struct fuse_operations fops;
+    char *id;
+    char *mount_point;
+    lio_segment_rw_hints_t *rw_hints;
 };
 
-void *lfs_init(struct fuse_conn_info *conn);  // returns pointer to lio_fuse_t on success, otherwise NULL
+#ifdef HAS_FUSE3
+    void *lfs_init(struct fuse_conn_info *conn, struct fuse_config *cfg);
+#else
+    void *lfs_init(struct fuse_conn_info *conn);
+#endif
 void lfs_destroy(void *lfs); // expects a lio_fuse_t* as the argument
 
 #ifdef __cplusplus

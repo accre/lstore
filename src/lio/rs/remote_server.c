@@ -52,6 +52,12 @@
 #include "rs/simple.h"
 #include "service_manager.h"
 
+static lio_rs_remote_server_priv_t rsrs_default_options = {
+    .section = "rs_remote_server",
+    .hostname = "${rsrs_host}",
+    .rs_local_section = "rs_simple"
+};
+
 typedef struct {
     mq_msg_t *msg;
     char *id;
@@ -447,7 +453,7 @@ void *rsrs_monitor_thread(apr_thread_t *th, void *data)
         }
         shutdown = rsrs->shutdown;
         wakeup_time = rsrs->wakeup_time;
-        log_printf(5, "checking.... pending=%d now=" TT " wakeup=" TT "\n", tbx_stack_count(rsrs->pending), apr_time_now(), wakeup_time);
+        log_printf(5, "checking.... changed=%d  pending=%d now=" TT " wakeup=" TT "\n", changed, tbx_stack_count(rsrs->pending), apr_time_now(), wakeup_time);
         apr_thread_mutex_unlock(rsrs->lock);
 
         if (changed == 1) { //** RID table has changed so propagate it to everone
@@ -468,6 +474,23 @@ void *rsrs_monitor_thread(apr_thread_t *th, void *data)
     rsrs_client_notify(rs, 1);
 
     return(NULL);
+}
+
+//***********************************************************************
+// rsrs_print_running_config - Prints the running config
+//***********************************************************************
+
+void rsrs_print_running_config(lio_resource_service_fn_t *rs, FILE *fd, int print_section_heading)
+{
+    lio_rs_remote_server_priv_t *rsrs = (lio_rs_remote_server_priv_t *)rs->priv;
+
+        if (print_section_heading) fprintf(fd, "[%s]\n", rsrs->section);
+        fprintf(fd, "type = %s\n", RS_TYPE_REMOTE_SERVER);
+        fprintf(fd, "address = %s\n", rsrs->hostname);
+        fprintf(fd, "rs_local = %s\n", rsrs->rs_local_section);
+        fprintf(fd, "\n");
+
+        rs_print_running_config(rsrs->rs_child, fd, 1);
 }
 
 //***********************************************************************
@@ -496,6 +519,8 @@ void rs_remote_server_destroy(lio_resource_service_fn_t *rs)
     apr_pool_destroy(rsrs->mpool);
     tbx_stack_free(rsrs->pending, 0);
     free(rsrs->hostname);
+    free(rsrs->section);
+    free(rsrs->rs_local_section);
     free(rsrs);
     free(rs);
 }
@@ -512,13 +537,15 @@ lio_resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *f
     lio_rs_remote_server_priv_t *rsrs;
     rs_create_t *rs_create;
     gop_mq_command_table_t *ctable;
-    char *stype, *ctype;
+    char *ctype;
 
-    if (section == NULL) section = "rs_remote_server";
+    if (section == NULL) section = rsrs_default_options.section;
 
     tbx_type_malloc_clear(rs, lio_resource_service_fn_t, 1);
     tbx_type_malloc_clear(rsrs, lio_rs_remote_server_priv_t, 1);
     rs->priv = (void *)rsrs;
+
+    rsrs->section = strdup(section);
 
     //** Make the locks and cond variables
     assert_result(apr_pool_create(&(rsrs->mpool), NULL), APR_SUCCESS);
@@ -532,28 +559,26 @@ lio_resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *f
     rsrs->notify_map_version.cond = rsrs->cond;
 
     //** Get the host name we bind to
-    rsrs->hostname= tbx_inip_get_string(fd, section, "address", NULL);
+    rsrs->hostname= tbx_inip_get_string(fd, section, "address", rsrs_default_options.hostname);
 
     //** Start the child RS.   The update above should have dumped a RID config for it to load
-    stype = tbx_inip_get_string(fd, section, "rs_local", NULL);
-    if (stype == NULL) {  //** Oops missing child RS
-        log_printf(0, "ERROR: Mising child RS  section=%s key=rs_local!\n", section);
+    rsrs->rs_local_section = tbx_inip_get_string(fd, section, "rs_local", rsrs_default_options.rs_local_section);
+    if (rsrs->rs_local_section == NULL) {  //** Oops missing child RS
+        log_printf(0, "ERROR: Mising child RS  section=%s key=rs_local!\n", rsrs->rs_local_section);
         tbx_log_flush();
-        free(stype);
         abort();
     }
 
     //** and load it
-    ctype = tbx_inip_get_string(fd, stype, "type", RS_TYPE_SIMPLE);
+    ctype = tbx_inip_get_string(fd, rsrs->rs_local_section, "type", RS_TYPE_SIMPLE);
     rs_create = lio_lookup_service(ess, RS_SM_AVAILABLE, ctype);
-    rsrs->rs_child = (*rs_create)(ess, fd, stype);
+    rsrs->rs_child = (*rs_create)(ess, fd, rsrs->rs_local_section);
     if (rsrs->rs_child == NULL) {
-        log_printf(1, "ERROR loading child RS!  type=%s section=%s\n", ctype, stype);
+        log_printf(1, "ERROR loading child RS!  type=%s section=%s\n", ctype, rsrs->rs_local_section);
         tbx_log_flush();
         abort();
     }
     free(ctype);
-    free(stype);
 
     //** Get the MQC
     rsrs->mqc = lio_lookup_service(ess, ESS_RUNNING, ESS_MQ);FATAL_UNLESS(rsrs->mqc != NULL);
@@ -572,6 +597,7 @@ lio_resource_service_fn_t *rs_remote_server_create(void *arg, tbx_inip_file_t *f
     //** Set up the fn ptrs.  This is just for syncing the rid configuration and state
     //** so very little is implemented
     rs->destroy_service = rs_remote_server_destroy;
+    rs->print_running_config = rsrs_print_running_config;
 
     rs->type = RS_TYPE_REMOTE_SERVER;
 

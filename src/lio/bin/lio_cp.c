@@ -38,7 +38,7 @@
 
 int main(int argc, char **argv)
 {
-    int i, start_index, start_option, n_paths, n_errors, return_code;
+    int i, start_index, start_option, n_paths, n_errors, return_code, enable_local;
     int max_spawn, stype, sflag, dflag;
     int obj_types = OS_OBJECT_ANY_FLAG;
     ex_off_t bufsize;
@@ -65,6 +65,7 @@ int main(int argc, char **argv)
         printf("    -rd recurse_depth  - Max recursion depth on directories. Defaults to %d\n", recurse_depth);
         printf("    -b bufsize         - Buffer size to use for *each* transfer. Units supported (Default=%s)\n", tbx_stk_pretty_print_int_with_scale(bufsize, ppbuf));
         printf("    -f                 - Force a slow or traditional copy by reading from the source and copying to the destination\n");
+        printf("    --local            - Enable copying local files to local disk.\n");
         printf("    src_path*          - Source path glob to copy\n");
         printf("    dest_path          - Destination file or directory\n");
         printf("\n");
@@ -85,6 +86,7 @@ int main(int argc, char **argv)
     //*** Parse the args
     n_errors = 0;
     slow = LIO_COPY_DIRECT;
+    enable_local = 0;
     i=1;
     do {
         start_option = i;
@@ -99,8 +101,10 @@ int main(int argc, char **argv)
             i++;
             bufsize = tbx_stk_string_get_integer(argv[i]);
             i++;
+        } else if (strcmp(argv[i], "--local") == 0) {
+            i++;
+            enable_local = 1;
         }
-
     } while ((start_option < i) && (i<argc));
     start_index = i;
 
@@ -140,6 +144,7 @@ int main(int argc, char **argv)
     return_code = 0;
     q = gop_opque_new();
     opque_start_execution(q);
+    status = gop_failure_status;
 
     //** Do some sanity checking and handle the simple case directly
     //** If multiple paths then the dest must be a dir and it has to exist
@@ -166,7 +171,10 @@ int main(int argc, char **argv)
         }
         free(path);
 
-        //**We'll be using one of these structuures depending on the type of copy
+        //** In case I/O is being done on the local file system lets align the bufsize to whole pages
+        tbx_fudge_align_size(bufsize, 2*getpagesize());
+
+        //**We'll be using one of these structures depending on the type of copy
         cp->dest_tuple = dtuple;
         cp->dest_type = dtype;
         cp->path_regex = lio_os_path_glob2regex(cp->src_tuple.path);
@@ -175,12 +183,14 @@ int main(int argc, char **argv)
         cp->max_spawn = max_spawn;
         cp->bufsize = bufsize;
         cp->slow = slow;
+        cp->enable_local = enable_local;
 
         memset(&cpf, 0, sizeof(cpf));
         cpf.src_tuple = cp->src_tuple;
         cpf.dest_tuple = cp->dest_tuple;
         cpf.bufsize = cp->bufsize;
         cpf.slow = cp->slow;
+        cpf.enable_local = cp->enable_local;
         cpf.rw_hints = NULL;
 
         if (lio_os_regex_is_fixed(cp->path_regex) == 1) {  //** Fixed source
@@ -235,11 +245,13 @@ int main(int argc, char **argv)
             }
         }
 
+        if (status.op_status != OP_STATE_SUCCESS) {
+            fprintf(stderr, "ERROR with copy src=%s dest=%s\n", cp->src_tuple.path, dtuple.path);
+        }
         lio_path_release(&cp->src_tuple);
         lio_os_regex_table_destroy(cp->path_regex);
         free(cp);
         if (status.op_status != OP_STATE_SUCCESS) {
-            fprintf(stderr, "ERROR with copy src=%s dest=%s\n", cp->src_tuple.path, dtuple.path);
             return_code = EIO;
             goto finished;
         }
@@ -267,6 +279,7 @@ int main(int argc, char **argv)
             cp->max_spawn = max_spawn;
             cp->bufsize = bufsize;
             cp->slow = slow;
+            cp->enable_local = enable_local;
 
             gop = gop_tp_op_new(lio_gc->tpc_unlimited, NULL, lio_path_copy_op, cp, NULL, 1);
             gop_set_private(gop, cp);

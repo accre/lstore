@@ -46,9 +46,9 @@ extern int _tp_stats;
 
 static int _tp_concurrent_max;
 static int _tp_depth_concurrent_max[TP_MAX_DEPTH];
-static tbx_atomic_unit32_t _tp_depth_concurrent[TP_MAX_DEPTH];
-static tbx_atomic_unit32_t _tp_concurrent;
-static tbx_atomic_unit32_t _tp_depth_total[TP_MAX_DEPTH];
+static tbx_atomic_int_t _tp_depth_concurrent[TP_MAX_DEPTH];
+static tbx_atomic_int_t _tp_concurrent;
+static tbx_atomic_int_t _tp_depth_total[TP_MAX_DEPTH];
 
 apr_threadkey_t *thread_local_stats_key = NULL;
 apr_threadkey_t *thread_local_depth_key = NULL;
@@ -60,16 +60,17 @@ void _tp_op_free(gop_op_generic_t *gop, int mode);
 // thread_pool_stats_print - Dumps the stats to the local log file
 //*************************************************************************
 
-void thread_pool_stats_print()
+void thread_pool_stats_print(FILE *fd)
 {
     int i, total;
 
-    log_printf(0, "--------Thread Pool Stats----------\n");
-    log_printf(0, "Max Concurrency: %d\n", _tp_concurrent_max);
-    log_printf(0, "Level  Concurrent     Total\n");
+    fprintf(fd, "Thread Pool Concurrency Stats-------------------\n");
+    fprintf(fd, "Max Concurrency: %d\n", _tp_concurrent_max);
+    fprintf(fd, "Level  Concurrent     Total\n");
+
     for (i=0; i<TP_MAX_DEPTH; i++) {
         total = tbx_atomic_get(_tp_depth_total[i]);
-        log_printf(0, " %2d    %10d  %10d\n", i, _tp_depth_concurrent_max[i], total);
+        if (total > 0) fprintf(fd, " %2d    %10d  %10d\n", i, _tp_depth_concurrent_max[i], total);
     }
 }
 
@@ -172,9 +173,9 @@ gop_op_generic_t *_tpc_overflow_next(gop_thread_pool_context_t *tpc)
     }
 
 if (gop) {
-    log_printf(0, "dmax=%d reserve=%d slot=%d gid=%d n_running=%d max=%d\n", dmax, i, slot, gop_id(gop), tbx_atomic_get(tpc->n_running), tpc->max_concurrency);
+    log_printf(0, "dmax=%d reserve=%d slot=%d gid=%d n_running=" AIT " max=%d\n", dmax, i, slot, gop_id(gop), tbx_atomic_get(tpc->n_running), tpc->max_concurrency);
 } else {
-    log_printf(0, "dmax=%d reserve=%d slot=%d gop=%p n_running=%d max=%d\n", dmax, i, slot, gop, tbx_atomic_get(tpc->n_running), tpc->max_concurrency);
+    log_printf(0, "dmax=%d reserve=%d slot=%d gop=%p n_running=" AIT " max=%d\n", dmax, i, slot, gop, tbx_atomic_get(tpc->n_running), tpc->max_concurrency);
 }
     return(gop);
 }
@@ -226,7 +227,7 @@ void thread_pool_exec_fn(void *arg, gop_op_generic_t *gop)
         }
     }
 
-    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), tid, op->depth, op->overflow_slot, tbx_atomic_get(tpc->n_overflow));
+    log_printf(4, "tp_recv: Start!!! gid=%d tid=%d op->depth=%d op->overflow_slot=%d n_overflow=" AIT "\n", gop_id(gop), tid, op->depth, op->overflow_slot, tbx_atomic_get(tpc->n_overflow));
     tbx_atomic_inc(tpc->n_started);
 
     status = op->fn(op->arg, gop_id(gop));
@@ -237,7 +238,7 @@ void thread_pool_exec_fn(void *arg, gop_op_generic_t *gop)
         }
     }
 
-    log_printf(4, "tp_recv: end!!! gid=%d ptid=%d status=%d op->depth=%d op->overflow_slot=%d n_overflow=%d\n", gop_id(gop), op->parent_tid, status.op_status, op->depth, op->overflow_slot, tbx_atomic_get(tpc->n_overflow));
+    log_printf(4, "tp_recv: end!!! gid=%d ptid=%d status=%d op->depth=%d op->overflow_slot=%d n_overflow=" AIT "\n", gop_id(gop), op->parent_tid, status.op_status, op->depth, op->overflow_slot, tbx_atomic_get(tpc->n_overflow));
 
     if (op->overflow_slot != -1) { //** Need to clean up our overflow slot
         apr_thread_mutex_lock(_tp_lock);

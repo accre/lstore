@@ -310,7 +310,7 @@ int write_to_disk_user(ibp_task_t *task, Allocation_t *a, ibp_off_t *left, Resou
   if (a->type == IBP_BYTEARRAY) {
      nleft = *left;   //** Already validated range in calling routine
   } else {
-     nleft = (*left > (a->max_size - a->size)) ? (a->max_size - a->size) : *left;
+     nleft = (*left > ((ibp_off_t)a->max_size - (ibp_off_t)a->size)) ? ((ibp_off_t)a->max_size - (ibp_off_t)a->size) : *left;
   }
 
   ntotal = 0;
@@ -372,7 +372,7 @@ log_printf(10, "write_to_disk_user: id=" LU " ns=%d after loop ncurrread= " I64T
            nread -= cleft;
 
            if (a->type == IBP_BYTEARRAY) {  //** Update the size before moving on
-             if (ioff > a->size) a->size = ioff;
+             if (ioff > (ibp_off_t)a->size) a->size = ioff;
            }
 
            if ((ileft <= 0) && (index < (iovec->n-1))) {

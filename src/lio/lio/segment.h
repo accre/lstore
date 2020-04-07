@@ -32,6 +32,13 @@ limitations under the License.
 extern "C" {
 #endif
 
+// Declare block size type flags
+typedef enum lio_segment_block_type_t lio_segment_block_type_t;
+enum lio_segemtn_block_type_t {
+    LIO_SEGMENT_BLOCK_MIN     = 0,   // Minimum allowed block size
+    LIO_SEGMENT_BLOCK_NATURAL = 1    // Natural block size for a client write
+};
+
 // Typedefs
 typedef struct lio_segment_vtable_t lio_segment_vtable_t;
 typedef gop_op_generic_t *(*lio_segment_read_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_rw_hints_t *hints, int n_iov, ex_tbx_iovec_t *iov, tbx_tbuf_t *buffer, ex_off_t boff, int timeout);
@@ -42,7 +49,7 @@ typedef gop_op_generic_t *(*lio_segment_remove_fn_t)(lio_segment_t *seg, data_at
 typedef gop_op_generic_t *(*lio_segment_flush_fn_t)(lio_segment_t *seg, data_attr_t *da, ex_off_t lo, ex_off_t hi, int timeout);
 typedef gop_op_generic_t *(*lio_segment_clone_fn_t)(lio_segment_t *seg, data_attr_t *da, lio_segment_t **clone, int mode, void *attr, int timeout);
 typedef int (*lio_segment_signature_fn_t)(lio_segment_t *seg, char *buffer, int *used, int bufsize);
-typedef ex_off_t (*lio_segment_block_size_fn_t)(lio_segment_t *seg);
+typedef ex_off_t (*lio_segment_block_size_fn_t)(lio_segment_t *seg, int block_type);
 typedef ex_off_t (*lio_segment_size_fn_t)(lio_segment_t *seg);
 typedef int (*lio_segment_serialize_fn_t)(lio_segment_t *seg, lio_exnode_exchange_t *exp);
 typedef int (*lio_segment_deserialize_fn_t)(lio_segment_t *seg, ex_id_t id, lio_exnode_exchange_t *exp);
@@ -73,6 +80,7 @@ LIO_API gop_op_generic_t *lio_slog_merge_with_base_gop(lio_segment_t *seg, data_
 #define segment_size(s) ((lio_segment_vtable_t *)(s)->obj.vtable)->size(s)
 #define lio_segment_truncate(s, da, new_size, to) ((lio_segment_vtable_t *)(s)->obj.vtable)->truncate(s, da, new_size, to)
 #define segment_write(s, da, hints, n_iov, iov, tbuf, boff, to) ((lio_segment_vtable_t *)(s)->obj.vtable)->write(s, da, hints, n_iov, iov, tbuf, boff, to)
+#define segment_block_size(s, btype) ((lio_segment_vtable_t *)(s)->obj.vtable)->block_size(s, btype)
 
 // Exported types. To be obscured
 struct lio_segment_vtable_t {

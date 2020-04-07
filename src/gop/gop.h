@@ -42,7 +42,7 @@ struct gop_control_t {
 };
 
 
-extern tbx_atomic_unit32_t _opque_counter;
+extern tbx_atomic_int_t _opque_counter;
 
 
 void gop_simple_cb(void *v, int mode);
@@ -52,7 +52,6 @@ int gop_will_block(gop_op_generic_t *g);
 int gop_timed_waitall(gop_op_generic_t *g, int dt);
 
 
-void gop_mark_completed(gop_op_generic_t *gop, gop_op_status_t status);
 void gop_callback_append(gop_op_generic_t *gop, gop_callback_t *cb);
 
 #ifdef __cplusplus

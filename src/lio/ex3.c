@@ -361,7 +361,7 @@ lio_exnode_exchange_t *lio_exnode_exchange_load_file(char *fname)
 {
     FILE *fd;
     char *text;
-    int i;
+    int i, n;
 
     fd = fopen(fname, "r");
    FATAL_UNLESS(fd != NULL);
@@ -369,7 +369,9 @@ lio_exnode_exchange_t *lio_exnode_exchange_load_file(char *fname)
     i = ftell(fd);
     tbx_type_malloc(text, char, i + 2);
     fseek(fd, 0, SEEK_SET);
-    fread(text, i, 1, fd);
+    do {
+        n = fread(text, i, 1, fd);
+    } while (n != 1);
     text[i] = '\n';
     text[i+1] = '\0';
     fclose(fd);

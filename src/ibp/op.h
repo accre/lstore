@@ -24,7 +24,6 @@
 #include <apr_thread_mutex.h>
 #include <apr_time.h>
 #include <gop/gop.h>
-#include <gop/hp.h>
 #include <gop/types.h>
 #include <ibp/op.h>
 #include <ibp/protocol.h>
@@ -59,26 +58,17 @@ extern "C" {
 
 struct ibp_context_t {
     int tcpsize;         //** TCP R/W buffer size.  If 0 then OS default is used
-    int min_idle;        //** Connection minimum idle time before disconnecting
-    int min_threads;     //** Min and max threads allowed to a depot
-    int max_threads;     //** Max number of simultaneous connection to a depot
-    int max_connections; //** Max number of connections across all connections
     apr_time_t dt_connect;  //** How long to wait when making a new connection
     int rw_new_command;     //** byte "cost" of just the command portion excluding any data transfer for a Read/Write command
     int other_new_command;     //** byte "cost" of the non-R/W commands
     int coalesce_enable; //** Enable R/W coaleascing
-    int64_t max_workload;    //** Max workload allowed in a given connection
     int64_t max_coalesce;    //** MAx amount of data that can be coalesced
-    int max_wait;         //** Max time to wait and retry a connection
-    int wait_stable_time; //** Time to wait before opening a new connection for a heavily loaded depot
-    int abort_conn_attempts; //** If this many failed connection requests occur in a row we abort
-    int check_connection_interval;  //**# of secs to wait between checks if we need more connections to a depot
     int max_retry;        //** Max number of times to retry a command before failing.. only for dead socket retries
     int coalesce_ops;     //** If 1 then Read and Write ops for the same allocation are coalesced
     int connection_mode;  //** Connection mode
     int rr_size;          //** Round robin connection count. Only used ir cmode = RR
     double transfer_rate; //** Transfer rate in bytes/sec used for calculating timeouts.  Set to 0 to disable function
-    tbx_atomic_unit32_t rr_count; //** RR counter
+    tbx_atomic_int_t rr_count; //** RR counter
     ibp_connect_context_t cc[IBP_MAX_NUM_CMDS+1];  //** Default connection contexts for EACH command
     tbx_ns_chksum_t ncs;
     gop_portal_context_t *pc;
@@ -87,7 +77,8 @@ struct ibp_context_t {
     tbx_list_t   *coalesced_ops;  //** Ops available for coalescing go here
     apr_thread_mutex_t *lock;
     apr_pool_t *mpool;
-    tbx_atomic_unit32_t n_ops;
+    char *section;         //** Section name from INI file
+    tbx_atomic_int_t n_ops;
 };
 
 
@@ -152,7 +143,7 @@ void ibp_errno_init();
 struct ibp_op_validate_chksum_t {    //** IBP_VALIDATE_CHKSUM
     ibp_cap_t *cap;
     char       key[MAX_KEY_SIZE];
-    char       typekey[MAX_KEY_SIZE];                                                                                                                         
+    char       typekey[MAX_KEY_SIZE];
     int correct_errors;
     int *n_bad_blocks;
 };

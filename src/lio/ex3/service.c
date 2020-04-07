@@ -28,6 +28,7 @@
 #include "authn/fake.h"
 #include "cache.h"
 #include "cache/amp.h"
+#include "cache/direct.h"
 #include "cache/round_robin.h"
 #include "ds.h"
 #include "ds/ibp.h"
@@ -94,6 +95,8 @@ lio_service_manager_t *lio_exnode_service_set_create()
     add_service(ess, CACHE_CREATE_AVAILABLE, CACHE_TYPE_AMP, amp_cache_create);
     add_service(ess, CACHE_LOAD_AVAILABLE, CACHE_TYPE_ROUND_ROBIN, round_robin_cache_load);
     add_service(ess, CACHE_CREATE_AVAILABLE, CACHE_TYPE_ROUND_ROBIN, round_robin_cache_create);
+    add_service(ess, CACHE_LOAD_AVAILABLE, CACHE_TYPE_DIRECT, direct_cache_load);
+    add_service(ess, CACHE_CREATE_AVAILABLE, CACHE_TYPE_DIRECT, direct_cache_create);
 
     return(ess);
 }

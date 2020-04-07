@@ -60,6 +60,7 @@ struct lio_ds_ibp_attr_t {
 };
 
 struct lio_ds_ibp_priv_t {
+    char *section;
     lio_ds_ibp_attr_t attr_default;
     ibp_context_t *ic;
 

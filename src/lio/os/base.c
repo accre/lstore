@@ -44,7 +44,7 @@
 
 apr_thread_mutex_t *_path_parse_lock = NULL;
 apr_pool_t *_path_parse_pool = NULL;
-tbx_atomic_unit32_t _path_parse_counter = 0;
+tbx_atomic_int_t _path_parse_counter = 0;
 
 //***********************************************************************
 // lio_os_glob2regex - Converts a string in shell glob notation to regex
@@ -293,7 +293,7 @@ void lio_os_regex_table_destroy(lio_os_regex_table_t *table)
             }
         }
 
-        if (table->n > 0) free(table->regex_entry);
+        free(table->regex_entry);
     }
 
     free(table);

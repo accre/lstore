@@ -92,6 +92,7 @@ struct lio_os_attr_list_t {
 #define os_next_attr(os, it, key, val, vsize) (os)->next_attr(it, key, val, vsize)
 #define os_destroy_attr_iter(os, it) (os)->destroy_attr_iter(it)
 #define os_destroy(os) (os)->destroy_service(os)
+#define os_print_running_config(os, fd, psh) (os)->print_running_config(os, fd, psh)
 
 lio_os_regex_table_t *os_regex_table_create(int n);
 int os_regex_table_pack(lio_os_regex_table_t *regex, unsigned char *buffer, int bufsize);

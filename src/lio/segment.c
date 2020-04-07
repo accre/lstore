@@ -22,6 +22,7 @@
 
 #include <apr_time.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <gop/gop.h>
 #include <gop/opque.h>
 #include <gop/tp.h>
@@ -31,11 +32,15 @@
 #include <stdio.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <tbx/append_printf.h>
 #include <tbx/assert_result.h>
+#include <tbx/direct_io.h>
 #include <tbx/iniparse.h>
 #include <tbx/log.h>
+#include <tbx/string_token.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
+#include <unistd.h>
 
 #include "ds.h"
 #include "ex3.h"
@@ -89,6 +94,26 @@ lio_segment_t *load_segment(lio_service_manager_t *ess, ex_id_t id, lio_exnode_e
 }
 
 //***********************************************************************
+// math_gcd - Greatest common Divisor
+//***********************************************************************
+
+ex_off_t math_gcd(ex_off_t a, ex_off_t b)
+{
+    if (a == 0) return(b);
+
+    return(math_gcd(b%a, a));
+}
+
+//***********************************************************************
+// math_lcm - Least Common Multiple
+//***********************************************************************
+
+ex_off_t math_lcm(ex_off_t a, ex_off_t b)
+{
+    return((a*b) / math_gcd(a,b));
+}
+
+//***********************************************************************
 // lio_segment_copy_gop_func - Does the actual segment copy operation
 //***********************************************************************
 
@@ -99,14 +124,22 @@ gop_op_status_t lio_segment_copy_gop_func(void *arg, int id)
     tbx_tbuf_t tbuf1, tbuf2;
     int err;
     ex_off_t bufsize;
-    ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, dend;
+    ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, dend, block_size;
     ex_tbx_iovec_t rex, wex;
     gop_opque_t *q;
     gop_op_generic_t *rgop, *wgop;
     gop_op_status_t status;
 
     //** Set up the buffers
-    bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
+    block_size = math_lcm(segment_block_size(sc->src, LIO_SEGMENT_BLOCK_NATURAL), segment_block_size(sc->dest, LIO_SEGMENT_BLOCK_NATURAL));
+    tlen = sc->bufsize / 2;
+    if ((block_size > tlen) || (sc->src_offset != 0) || (sc->dest_offset != 0)) {  //** LCM is to big or we have offsets so don't try and hit page boundaries
+        bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
+    } else {  //** LCM is good and no offsets
+        tlen = ( tlen / block_size);
+        bufsize = tlen * block_size;
+    }
+
     tbx_tbuf_single(&tbuf1, bufsize, sc->buffer);
     tbx_tbuf_single(&tbuf2, bufsize, &(sc->buffer[bufsize]));
     rbuf = &tbuf1;
@@ -129,7 +162,6 @@ gop_op_status_t lio_segment_copy_gop_func(void *arg, int id)
     //** Read the initial block
     rpos = sc->src_offset;
     wpos = sc->dest_offset;
-//  rlen = (nbytes > bufsize) ? bufsize : nbytes;
     wlen = 0;
     ex_iovec_single(&rex, rpos, rlen);
     rpos += rlen;
@@ -238,6 +270,7 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
     ex_off_t bufsize;
     int err;
     ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, total;
+    ex_off_t block_size, pplen, initial_len, base_len;
     ex_tbx_iovec_t rex;
     apr_time_t loop_start, file_start;
     double dt_loop, dt_file;
@@ -245,7 +278,18 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
     gop_op_status_t status;
 
     //** Set up the buffers
-    bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
+    block_size = segment_block_size(sc->src, LIO_SEGMENT_BLOCK_NATURAL);
+    tlen = (sc->bufsize / 2 / block_size) - 1;
+    pplen = block_size - (sc->src_offset % block_size);
+    if (tlen <= 0) {
+        bufsize = sc->bufsize / 2;
+        initial_len = base_len = bufsize;
+    } else {
+        base_len = tlen * block_size;
+        bufsize = base_len + block_size;
+        initial_len = base_len + pplen;
+    }
+
     rb = sc->buffer;
     wb = &(sc->buffer[bufsize]);
     tbx_tbuf_single(&tbuf1, bufsize, rb);
@@ -259,10 +303,13 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
     rpos = sc->src_offset;
     wpos = 0;
     nbytes = segment_size(sc->src) - sc->src_offset;
+    if (sc->len > 0) {
+        if (nbytes > sc->len) nbytes = sc->len;
+    }
     if (nbytes < 0) {
-        rlen = bufsize;
+        rlen = initial_len;
     } else {
-        rlen = (nbytes > bufsize) ? bufsize : nbytes;
+        rlen = (nbytes > initial_len) ? initial_len : nbytes;
     }
 
     log_printf(5, "FILE fd=%p\n", sc->fd);
@@ -282,6 +329,7 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
     gop_free(gop, OP_DESTROY);
 
     total = 0;
+    bufsize = base_len;  //** Everything else uses the base_len
 
     do {
         //** Swap the buffers
@@ -314,7 +362,7 @@ gop_op_status_t segment_get_gop_func(void *arg, int id)
 
         //** Start the write
         file_start = apr_time_now();
-        got = fwrite(wb, 1, wlen, sc->fd);
+        got = tbx_dio_write(sc->fd, wb, wlen, -1);
         dt_file = apr_time_now() - file_start;
         dt_file /= (double)APR_USEC_PER_SEC;
         total += got;
@@ -389,7 +437,8 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
     char *rb, *wb, *tb;
     ex_off_t bufsize;
     int err;
-    ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, dend;
+    ex_off_t rpos, wpos, rlen, wlen, tlen, nbytes, got, dend, block_size;
+    ex_off_t initial_len, base_len, pplen;
     ex_tbx_iovec_t wex;
     gop_op_generic_t *gop;
     gop_op_status_t status;
@@ -397,7 +446,19 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
     double dt_loop, dt_file;
 
     //** Set up the buffers
-    bufsize = sc->bufsize / 2;  //** The buffer is split for R/W
+    block_size = segment_block_size(sc->dest, LIO_SEGMENT_BLOCK_NATURAL);
+    tlen = (sc->bufsize / 2 / block_size) - 1;
+    pplen = block_size - (sc->dest_offset % block_size);
+    if (tlen <= 0) {
+        bufsize = sc->bufsize / 2;
+        initial_len = base_len = bufsize;
+    } else {
+        base_len = tlen * block_size;
+        bufsize = base_len + block_size;
+        initial_len = base_len + pplen;
+    }
+
+    //** The buffer is split for R/W
     rb = sc->buffer;
     wb = &(sc->buffer[bufsize]);
     tbx_tbuf_single(&tbuf1, bufsize, rb);
@@ -407,38 +468,43 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
 
     nbytes = sc->len;
     status = gop_success_status;
+    dend = 0;
 
     //** Go ahead and reserve the space in the destintaion
-    dend = sc->dest_offset + nbytes;
-    gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
+    if (nbytes > 0) {
+        if (sc->truncate == 1) {
+            dend = sc->dest_offset + nbytes;
+            gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, -dend, sc->timeout));
+        }
+    }
 
     //** Read the initial block
     rpos = 0;
     wpos = sc->dest_offset;
     if (nbytes < 0) {
-        rlen = bufsize;
+        rlen = initial_len;
     } else {
-        rlen = (nbytes > bufsize) ? bufsize : nbytes;
+        rlen = (nbytes > initial_len) ? initial_len : nbytes;
     }
 
     wlen = 0;
     rpos += rlen;
-    nbytes -= rlen;
+    if (nbytes > 0) nbytes -= rlen;
     log_printf(0, "FILE fd=%p bufsize=" XOT " rlen=" XOT " nbytes=" XOT "\n", sc->fd, bufsize, rlen, nbytes);
 
     loop_start = apr_time_now();
-    got = fread(rb, 1, rlen, sc->fd);
+    got = tbx_dio_read(sc->fd, rb, rlen, -1);
     dt_file = apr_time_now() - loop_start;
     dt_file /= (double)APR_USEC_PER_SEC;
 
-    if (got == 0) {
-        if (feof(sc->fd) == 0)  {
-            log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " rlen=" XOT " got=" XOT "\n", errno, segment_id(sc->dest), rlen, got);
-            status = gop_failure_status;
-        }
+    if (got == -1) {
+        log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " rlen=" XOT " got=" XOT "\n", errno, segment_id(sc->dest), rlen, got);
+        status = gop_failure_status;
         goto finished;
     }
     rlen = got;
+
+    bufsize = base_len;  //** Everything else uses the base_len
 
     do {
         //** Swap the buffers
@@ -469,21 +535,19 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
         }
         if (rlen > 0) {
             file_start = apr_time_now();
-            got = fread(rb, 1, rlen, sc->fd);
+            got = tbx_dio_read(sc->fd, rb, rlen, -1);
             dt_file = apr_time_now() - file_start;
             dt_file /= (double)APR_USEC_PER_SEC;
-            if (got == 0) {
-                if (feof(sc->fd) == 0)  {
-                    log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " got=" XOT " rlen=" XOT "\n", errno, segment_id(sc->dest), got, rlen);
-                    status = gop_failure_status;
-                    gop_waitall(gop);
-                    gop_free(gop, OP_DESTROY);
-                    goto finished;
-                }
+            if (got == -1) {
+                log_printf(1, "ERROR from fread=%d  dest sid=" XIDT " got=" XOT " rlen=" XOT "\n", errno, segment_id(sc->dest), got, rlen);
+                status = gop_failure_status;
+                gop_waitall(gop);
+                gop_free(gop, OP_DESTROY);
+                goto finished;
             }
             rlen = got;
             rpos += rlen;
-            nbytes -= rlen;
+            if (nbytes > 0) nbytes -= rlen;
         }
 
         //** Wait for it to complete
@@ -491,7 +555,7 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
         dt_loop = apr_time_now() - loop_start;
         dt_loop /= (double)APR_USEC_PER_SEC;
 
-        log_printf(1, "dt_loop=%lf  dt_file=%lf\n", dt_loop, dt_file);
+        log_printf(1, "dt_loop=%lf  dt_file=%lf nleft=" XOT " rlen=" XOT " err=%d\n", dt_loop, dt_file, nbytes, rlen, err);
 
         if (err != OP_STATE_SUCCESS) {
             log_printf(1, "ERROR write(dseg=" XIDT ") failed! wpos=" XOT " len=" XOT "\n", segment_id(sc->dest), wpos, wlen);
@@ -500,7 +564,7 @@ gop_op_status_t segment_put_gop_func(void *arg, int id)
             goto finished;
         }
         gop_free(gop, OP_DESTROY);
-    } while (rlen > 0);
+    } while ((rlen > 0) && (nbytes != 0));
 
     if (sc->truncate == 1) {  //** Truncate if wanted
         gop_sync_exec(lio_segment_truncate(sc->dest, sc->da, wpos, sc->timeout));

@@ -46,6 +46,7 @@
 #include <tbx/log.h>
 #include <tbx/network.h>
 #include <tbx/random.h>
+#include <tbx/range_stack.h>
 #include <tbx/skiplist.h>
 #include <tbx/stack.h>
 #include <tbx/string_token.h>
@@ -328,8 +329,8 @@ int slun_row_placement_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b,
 //log_printf(0, "i=%d ngood=%d nbad=%d m=%d\n", i, ngood, nbad, m);
         }
 
-
-        gop = rs_data_request(s->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, 1, timeout);
+        // 3=ignore fixed and it's ok to return a partial list
+        gop = rs_data_request(s->rs, da, rsq, cap, req, m, hints_list, ngood, n_devices, 3, timeout);
 
         if (rid_lock != NULL) apr_thread_mutex_unlock(rid_lock);  //** The data request will use the rid_changes table in constructing the ops
 
@@ -617,18 +618,20 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
     tbx_stack_t *cleanup_stack;
     gop_op_status_t status;
     rs_query_t *rsq;
-    gop_op_generic_t *gop;
-    tbx_stack_t *attr_stack;
+    gop_op_generic_t *gop, *g;
     int i, j, loop, err, m, ngood, nbad, kick_out;
     int missing[n_devices];
     lio_rs_hints_t hints_list[n_devices];
     char *migrate;
     lio_data_block_t *db;
+    lio_data_block_t *db_orig[n_devices];
+    lio_data_block_t *db_working[n_devices];
 
     //** Dup the base query
     rsq = rs_query_dup(s->rs, args->query);
 
     memset(hints_list, 0, sizeof(hints_list));
+    memset(db_working, 0, n_devices * sizeof(lio_data_block_t *));
 
     loop = 0;
     kick_out = 10000;
@@ -636,7 +639,11 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
     do {
         log_printf(15, "loop=%d ------------------------------\n", loop);
 
+        //** Copy the original data blocks over
+        for (i=0; i<n_devices; i++) db_orig[i] = b->block[i].data;
+
         //** Make the fixed list mapping table
+        memset(req_list, 0, sizeof(lio_rs_request_t)*n_devices);
         nbad = n_devices-1;
         ngood = 0;
         m = 0;
@@ -645,8 +652,9 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
                 j = ngood;
                 hints_list[ngood].fixed_rid_key = b->block[i].data->rid_key;
                 hints_list[ngood].status = RS_ERROR_OK;
+                migrate = data_block_get_attr(b->block[i].data, "migrate");
                 ngood++;
-            } else {
+            } else {   //** Make sure we haven't already replaced it
                 j = nbad;
                 hints_list[nbad].fixed_rid_key = NULL;
                 hints_list[nbad].status = RS_ERROR_OK;
@@ -654,32 +662,19 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
                 req_list[m].rid_index = nbad;
                 req_list[m].size = b->block_len;
 
-                //** Make a new block and copy the old data
-                attr_stack = NULL;
-                if (b->block[i].data != NULL) {
-                    db = b->block[i].data;
-                    attr_stack = db->attr_stack;
-                    db->attr_stack = NULL;
-
-                    //** Make the cleanup operations
-                    if (args->qs) {
-                        gop = ds_remove(s->ds, da, ds_get_cap(db->ds, db->cap, DS_CAP_MANAGE), timeout);
-                        gop_opque_add(args->qs, gop);  //** This gets placed on the success queue so we can roll it back if needed
-                    }
-                    if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
-                    tbx_stack_push(s->db_cleanup, db);   //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
-
-                    b->block[i].data = data_block_create(s->ds);
-                } else {
-                    b->block[i].data = data_block_create(s->ds);
+                //** check if we need to make a working data block
+                if (db_working[i] == NULL) {
+                    db = data_block_create(s->ds);
+                    db_working[i] = db;
+                    db->attr_stack = (db_orig[i]) ? db_orig[i]->attr_stack : NULL;
+                    db->rid_key = NULL;
+                    db->max_size = b->block_len;
+                    db->size = b->block_len;
                 }
-                cap_list[m] = b->block[i].data->cap;
-                b->block[i].data->rid_key = NULL;
-                b->block[i].data->attr_stack = attr_stack;
-                b->block[i].data->max_size = b->block_len;
-                b->block[i].data->size = b->block_len;
-                b->block[i].read_err_count = 0;
-                b->block[i].write_err_count = 0;
+
+                cap_list[m] = db_working[i]->cap;
+                migrate = data_block_get_attr(db_working[i], "migrate");
+
                 missing[m] = i;
                 m++;
                 nbad--;
@@ -689,7 +684,6 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
                 rs_query_destroy(s->rs, hints_list[j].local_rsq);
             }
 
-            migrate = data_block_get_attr(b->block[i].data, "migrate");
             if (migrate != NULL) {
                 hints_list[j].local_rsq = rs_query_parse(s->rs, migrate);
             } else {
@@ -708,11 +702,17 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
                 log_printf(1, "seg=" XIDT " ERROR not enough RIDS!\n", segment_id(seg));
                 err = m;
                 loop = kick_out + 10;  //** Kick us out of the loop
+                for (j=0; j<m; j++) {
+                    if (req_list[j].rid_key) free(req_list[j].rid_key);
+                }
                 goto oops;
             } else if (status.error_code == RS_ERROR_EMPTY_STACK) { //** No use looping
                 log_printf(1, "seg=" XIDT " ERROR RS query is BAD!\n", segment_id(seg));
                 err = m;
                 loop = kick_out + 10;  //** Kick us out of the loop
+                for (j=0; j<m; j++) {
+                    if (req_list[j].rid_key) free(req_list[j].rid_key);
+                }
                 goto oops;
             }
         }
@@ -721,13 +721,29 @@ int slun_row_replace_fix(lio_segment_t *seg, data_attr_t *da, seglun_row_t *b, i
         err = 0;
         for (j=0; j<m; j++) {
             i = missing[j];
-            log_printf(15, "missing[%d]=%d req.op_status=%d\n", j, missing[j], gop_completed_successfully(req_list[j].gop));
-            if (ds_get_cap(b->block[i].data->ds, b->block[i].data->cap, DS_CAP_READ) != NULL) {
+            log_printf(15, "missing[%d]=%d req.op_status=%d\n", j, missing[j], (req_list[j].gop) ? gop_completed_successfully(req_list[j].gop) : -123);
+            db = db_working[i];
+            if (ds_get_cap(db->ds, db->cap, DS_CAP_READ) != NULL) {
                 block_status[i] = 2;  //** Mark the block for padding
-                data_block_auto_warm(b->block[i].data);  //** Add it to be auto-warmed
-                b->block[i].data->rid_key = req_list[j].rid_key;
-                tbx_atomic_inc(b->block[i].data->ref_count);
+                data_block_auto_warm(db);  //** Add it to be auto-warmed
+                b->block[i].data = db;
+                db->rid_key = req_list[j].rid_key;
+                tbx_atomic_inc(db->ref_count);
+                b->block[i].read_err_count = 0;
+                b->block[i].write_err_count = 0;
                 req_list[j].rid_key = NULL; //** Cleanup
+                db_working[i] = NULL;
+
+                //** Make the cleanup operations
+                if (db_orig[i]) {
+                    db_orig[i]->attr_stack = NULL;  //** This is now used by the new allocation
+                    if (args->qs) {
+                        g = ds_remove(s->ds, da, ds_get_cap(db_orig[i]->ds, db_orig[i]->cap, DS_CAP_MANAGE), timeout);
+                        gop_opque_add(args->qs, g);  //** This gets placed on the success queue so we can roll it back if needed
+                    }
+                    if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
+                    tbx_stack_push(s->db_cleanup, db_orig[i]);   //** Dump the data block here cause the cap is needed for the gop.  We'll cleanup up on destroy()
+                }
                 err++;
             } else {  //** Make sure we exclude the RID key on the next round due to the failure
                 if (req_list[j].rid_key != NULL) {
@@ -760,6 +776,11 @@ oops:
     for (i=0; i<n_devices; i++) {
         if (hints_list[i].local_rsq != NULL) {
             rs_query_destroy(s->rs, hints_list[i].local_rsq);
+        }
+        if (db_working[i] != NULL) {
+            db_working[i]->attr_stack = NULL;  //** This is still used by yhe original data block
+            if (s->db_cleanup == NULL) s->db_cleanup = tbx_stack_new();
+            tbx_stack_push(s->db_cleanup, db_working[i]);   //** Dump the unused data block for destruction
         }
     }
     if (cleanup_stack != NULL) tbx_stack_free(cleanup_stack, 1);
@@ -1044,7 +1065,13 @@ finished:
     s->total_size = new_size;
     s->used_size = new_used;
 
-    status = (err == OP_STATE_SUCCESS) ? gop_success_status : gop_failure_status;
+    if (err == OP_STATE_SUCCESS) {
+        status = gop_success_status;
+    } else if (new_size == 0) {   //** If new size is 0 then we can ignore any failed removals
+        status = gop_success_status;
+    } else {
+        status = gop_failure_status;
+    }
     return(status);
 }
 
@@ -1434,13 +1461,20 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
     gop_op_status_t status;
     gop_op_status_t blacklist_status = {OP_STATE_FAILURE, -1234};
     gop_opque_t *q;
-    seglun_row_t *b, **bused;
+
+    //** For small I/O we use the stack
+    int isl_size = 100;
+    seglun_row_t *bused_ptr[isl_size];
+    lun_rw_row_t rwb_table_ptr[isl_size];
+    seglun_row_t **bused = bused_ptr;
+    lun_rw_row_t *rwb_table = rwb_table_ptr;
+
+    seglun_row_t *b;
     tbx_isl_iter_t it;
     ex_off_t lo, hi, start, end, blen, bpos;
     int i, j, maxerr, nerr, slot, n_bslots, bl_count, dev, bl_rid;
-    int *bcount;
     tbx_stack_t *stack;
-    lun_rw_row_t *rw_buf, *rwb_table;
+    lun_rw_row_t *rw_buf;
     double dt;
     apr_time_t exec_time;
     apr_time_t tstart, tstart2;
@@ -1480,10 +1514,6 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
 
     s->inprogress_count++;  //** Flag that we are doing an I/O op
 
-    tbx_type_malloc(bused, seglun_row_t *, tbx_isl_count(s->isl));
-    tbx_type_malloc(bcount, int, s->n_devices * tbx_isl_count(s->isl));
-    tbx_type_malloc(rwb_table, lun_rw_row_t, s->n_devices * tbx_isl_count(s->isl));
-
     q = gop_opque_new();
     stack = tbx_stack_new();
     bpos = boff;
@@ -1513,6 +1543,19 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
                 b->rwop_index = n_bslots;
                 n_bslots++;
                 j = b->rwop_index * s->n_devices;
+                if (n_bslots >= isl_size) { //** Need to grow the tables
+                    log_printf(5, "REALLOCATING tables. isl_size=%d n_bslot=%d\n", isl_size, n_bslots);
+                    isl_size = 1.5*isl_size + 10;
+                    if (bused == bused_ptr) {
+                        tbx_type_malloc(rwb_table, lun_rw_row_t, s->n_devices * isl_size);
+                        tbx_type_malloc(bused, seglun_row_t *, isl_size);
+                        memcpy(rwb_table, rwb_table_ptr, sizeof(rwb_table_ptr));
+                        memcpy(bused, bused_ptr, sizeof(bused_ptr));
+                    } else {
+                        tbx_type_realloc(rwb_table, lun_rw_row_t, s->n_devices * isl_size);
+                        tbx_type_realloc(bused, seglun_row_t *, isl_size);
+                    }
+                }
                 memset(&(rwb_table[j]), 0, sizeof(lun_rw_row_t)*s->n_devices);
             }
 
@@ -1672,9 +1715,10 @@ gop_op_status_t seglun_rw_op(lio_segment_t *seg, data_attr_t *da, lio_segment_rw
     if (s->inprogress_count == 0) apr_thread_cond_broadcast(seg->cond);
     segment_unlock(seg);
 
-    free(rwb_table);
-    free(bcount);
-    free(bused);
+    if (bused != bused_ptr) {
+        free(rwb_table);
+        free(bused);
+    }
     tbx_stack_free(stack, 0);
     gop_opque_free(q, OP_DESTROY);
 
@@ -2090,6 +2134,9 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
                 j++;
             } while ((err > 0) && (j<5));
 
+            //** Add the range as repaired
+            tbx_range_stack_merge2(&(si->args->bad_ranges), b->seg_offset, b->seg_end);
+
             nrepaired = nlost - err;
         }
 
@@ -2160,6 +2207,9 @@ gop_op_status_t seglun_inspect_func(void *arg, int id)
                     info_printf(si->fd, 1, "%s\n", info);
                     j++;
                 } while ((err > 0) && (j<5));
+
+                //** Add the range as repaired
+                tbx_range_stack_merge2(&(si->args->bad_ranges), b->seg_offset, b->seg_end);
 
                 nmigrated += nforce - err;
             }
@@ -2340,8 +2390,13 @@ gop_op_status_t seglun_clone_func(void *arg, int id)
 
     //** Do the final grow if needed
     if (row_size != -1) {
-        log_printf(15, "dseg=" XIDT " Growing dest to " XOT "\n", segment_id(slc->dseg), bs->seg_end+1);
-        err = gop_sync_exec(lio_segment_truncate(slc->dseg, slc->da, bs->seg_end+1, slc->timeout));
+        if (bs) {
+            log_printf(15, "dseg=" XIDT " Growing dest to " XOT "\n", segment_id(slc->dseg), bs->seg_end+1);
+            err = gop_sync_exec(lio_segment_truncate(slc->dseg, slc->da, bs->seg_end+1, slc->timeout));
+        } else {
+            err = OP_STATE_FAILURE;
+            log_printf(15, "dseg=" XIDT " Growing dest to " XOT "\n", segment_id(slc->dseg), bs->seg_end+1);
+        }
         if (err != OP_STATE_SUCCESS) {
             log_printf(15, "Error growing destination! dseg=" XIDT "\n", segment_id(slc->dseg));
             sd->grow_break = 0; //** Undo the break flag
@@ -2511,11 +2566,13 @@ ex_off_t seglun_size(lio_segment_t *seg)
 // seglun_block_size - Returns the segment block size.
 //***********************************************************************
 
-ex_off_t seglun_block_size(lio_segment_t *seg)
+ex_off_t seglun_block_size(lio_segment_t *seg, int btype)
 {
     lio_seglun_priv_t *s = (lio_seglun_priv_t *)seg->priv;
 
-    return(s->stripe_size);
+    if (btype == LIO_SEGMENT_BLOCK_NATURAL) return(s->stripe_size);
+
+    return(1);
 }
 
 //***********************************************************************

@@ -62,6 +62,16 @@
 #include "os/file.h"
 #include "osaz/fake.h"
 
+static lio_osfile_priv_t osf_default_options = {
+    .section = "os_file",
+    .base_path = "/lio/osfile",
+    .internal_lock_size = 200,
+    .max_copy = 1024*1024,
+    .hardlink_dir_size = 256,
+    .authz_section = NULL,
+    .authn_section = NULL,
+};
+
 typedef struct {
     DIR *d;
     struct dirent *entry;
@@ -165,7 +175,7 @@ typedef struct {
     lio_creds_t *creds;
     lio_os_regex_table_t *rpath;
     lio_os_regex_table_t *object_regex;
-    tbx_atomic_unit32_t abort;
+    tbx_atomic_int_t abort;
     int obj_types;
     int recurse_depth;
 } osfile_remove_regex_op_t;
@@ -182,7 +192,7 @@ typedef struct {
     char *id;
     int *v_size;
     int n_keys;
-    tbx_atomic_unit32_t abort;
+    tbx_atomic_int_t abort;
 } osfile_regex_object_attr_op_t;
 
 typedef struct {
@@ -1411,6 +1421,7 @@ char *my_readdir(osf_dir_t *d)
     char *fname;
 
     if (d->type == 0) {
+        if (d->d == NULL) return(NULL);
         d->entry = readdir(d->d);
         if (d->entry == NULL) return(NULL);
         fname = &(d->entry->d_name[0]);
@@ -1449,7 +1460,7 @@ osf_dir_t *my_opendir(char *fullname, char *frag)
 void my_closedir(osf_dir_t *d)
 {
     if (d->type == 0) {
-        closedir(d->d);
+        if (d->d) closedir(d->d);
     }
 
     free(d);
@@ -1460,7 +1471,7 @@ void my_closedir(osf_dir_t *d)
 long my_telldir(osf_dir_t *d)
 {
     if (d->type == 0) {
-        return(telldir(d->d));
+        return((d->d) ? telldir(d->d) : 0);
     }
 
     return(d->slot);
@@ -1471,7 +1482,7 @@ long my_telldir(osf_dir_t *d)
 void my_seekdir(osf_dir_t *d, long offset)
 {
     if (d->type == 0) {
-        seekdir(d->d, offset);
+        if (d->d) seekdir(d->d, offset);
     } else {
         d->slot = offset;
     }
@@ -1484,7 +1495,7 @@ void my_seekdir(osf_dir_t *d, long offset)
 int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
 {
     lio_osfile_priv_t *osf = (lio_osfile_priv_t *)it->os->priv;
-    int i, rmatch, tweak;
+    int i, rmatch, tweak, do_recurse;
     struct stat link_stat, object_stat;
     ino_t *ino_sys;
     osf_obj_level_t *itl;
@@ -1517,13 +1528,15 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
             tbx_stack_push(it->recurse_stack, itl);
         }
     }
-    it_top = &(it->level_info[it->table->n-1]);
+    it_top = (it->table->n > 0) ? &(it->level_info[it->table->n-1]) : NULL;
     if ((it->table->n == 1) && (it_top->fragment != NULL)) {
         tweak = it_top->fixed_prefix;
         if (tweak > 0) tweak += 2;
     }
 
-    log_printf(15, "top_level=%d it_top->fragment=%s it_top->path=%s tweak=%d\n", it->table->n-1, it_top->fragment, it_top->path, tweak);
+    if (it_top != NULL) {
+        log_printf(15, "top_level=%d it_top->fragment=%s it_top->path=%s tweak=%d\n", it->table->n-1, it_top->fragment, it_top->path, tweak);
+    }
 
     do {
         if (it->curr_level >= it->table->n) {
@@ -1543,6 +1556,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                 if ((strncmp(itl->entry, FILE_ATTR_PREFIX, FILE_ATTR_PREFIX_LEN) == 0) ||
                         (strcmp(itl->entry, ".") == 0) || (strcmp(itl->entry, "..") == 0)) i = 1;
             }
+log_printf(0, "regexec=%d entry=%s\n", i, itl->entry);
             if (i == 0) { //** Regex match
                 snprintf(fname, OS_PATH_MAX, "%s/%s", itl->path, itl->entry);
                 snprintf(fullname, OS_PATH_MAX, "%s%s", osf->file_path, fname);
@@ -1565,13 +1579,14 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                         } else { //** Off the static table or on the last level.  From here on all hits are matches. Just have to check ftype
                             i = os_local_filetype_stat(fullname, &link_stat, &object_stat);
                             log_printf(15, " ftype=%d object_types=%d firstpass=%d\n", i, it->object_types, itl->firstpass);
-
+                            do_recurse = 1;
                             if (i & OS_OBJECT_SYMLINK_FLAG) {  //** Check if we follow symlinks
                                 if ((it->object_types & OS_OBJECT_FOLLOW_SYMLINK_FLAG) == 0) {
-                                    itl->firstpass = 0;  //** Force a match check since we won't follow the link
+                                    if ((it->table->n-1) <= it->curr_level) do_recurse = 0;  //** Off the static level and hit a symlink so ignore it.
                                 } else {  //** Check if we have a symlink loop
                                     if (apr_hash_get(it->symlink_loop, &link_stat.st_ino, sizeof(ino_t)) != NULL) {
-                                        i = 0;   //** Already been here so don't print and prune the branch
+                                        log_printf(15, "Already been here via symlink so pruning\n");
+                                        if (itl->firstpass == 1) i = 0;   //** Already been here so don't print and prune the branch
                                     } else {  //** First time so add it for tracking
                                         tbx_type_malloc(ino_sys, ino_t, 1);
                                         *ino_sys = link_stat.st_ino;
@@ -1580,7 +1595,8 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                 }
                             }
 
-                            if (i & OS_OBJECT_FILE_FLAG) {
+                            //** See if we have a match: either it's a file or a symlink to a file or dir we don't recurse into
+                            if ((i & OS_OBJECT_FILE_FLAG) || ((i & OS_OBJECT_DIR_FLAG) && (do_recurse == 0))) {
                                 if ((i & it->object_types) > 0) {
                                     rmatch = (it->object_regex == NULL) ? 0 : ((obj_fixed != NULL) ? strcmp(itl->entry, obj_fixed) : regexec(it->object_preg, itl->entry, 0, NULL, 0));
 
@@ -1595,7 +1611,7 @@ int osf_next_object(osf_object_iter_t *it, char **myfname, int *prefix_len)
                                         return(i);
                                     }
                                 }
-                            } else if (i & OS_OBJECT_DIR_FLAG) {  //** It's a dir or a symlink that should be checked
+                            } else if ((i & OS_OBJECT_DIR_FLAG) && (do_recurse == 1)) {  //** It's a dir or a symlink that should be checked
                                 if (itl->firstpass == 1) { //** 1st pass so store the pos and recurse
                                     itl->firstpass = 0;              //** Flag it as already processed
                                     my_seekdir(itl->d, itl->prev_pos);  //** Move the dirp back one slot
@@ -2991,10 +3007,17 @@ int osf_get_attr(lio_object_service_fn_t *os, lio_creds_t *creds, osfile_fd_t *o
         fseek(fd, 0L, SEEK_END);
         n = ftell(fd);
         fseek(fd, 0L, SEEK_SET);
-        *v_size = (n > (-*v_size)) ? -*v_size : n;
-        bsize = *v_size + 1;
-        log_printf(15, " adjusting v_size=%d n=%d\n", *v_size, n);
-        *val = malloc(bsize);
+        if (n < 1) {    //** Either have an error (-1) or an empty file (0)
+           *v_size = 0;
+            *val = NULL;
+            fclose(fd);
+            return((n<0) ? 1 : 0);
+        } else {
+            *v_size = (n > (-*v_size)) ? -*v_size : n;
+            bsize = *v_size + 1;
+            log_printf(15, " adjusting v_size=%d n=%d\n", *v_size, n);
+            *val = malloc(bsize);
+         }
     } else {
         bsize = *v_size;
     }
@@ -4076,7 +4099,7 @@ int osfile_next_fsck(lio_object_service_fn_t *os, os_fsck_iter_t *oit, char **ba
         if (err != OS_FSCK_GOOD) {
             *bad_atype = atype;
             *bad_fname = fname;
-            return(OS_FSCK_ERROR);
+            return(err);
         }
 
         free(fname);
@@ -4145,6 +4168,25 @@ void osfile_cred_destroy(lio_object_service_fn_t *os, lio_creds_t *creds)
 }
 
 //***********************************************************************
+// osfile_print_running_config - Prints the running config
+//***********************************************************************
+
+void osfile_print_running_config(lio_object_service_fn_t *os, FILE *fd, int print_section_heading)
+{
+    lio_osfile_priv_t *osf = (lio_osfile_priv_t *)os->priv;
+
+    if (print_section_heading) fprintf(fd, "[%s]\n", osf->section);
+    fprintf(fd, "type = %s\n", OS_TYPE_FILE);
+    fprintf(fd, "base_path = %s\n", osf->base_path);
+    fprintf(fd, "lock_table_size = %d\n", osf->internal_lock_size);
+    fprintf(fd, "max_copy = %d\n", osf->max_copy);
+    fprintf(fd, "hardlink_dir_size = %d\n", osf->hardlink_dir_size);
+    fprintf(fd, "authz = %s\n", osf->authz_section);
+    fprintf(fd, "authn = %s\n", osf->authn_section);
+    fprintf(fd, "\n");
+}
+
+//***********************************************************************
 // osfile_destroy
 //***********************************************************************
 
@@ -4169,6 +4211,9 @@ void osfile_destroy(lio_object_service_fn_t *os)
 
     apr_pool_destroy(osf->mpool);
 
+    if (osf->authn_section) free(osf->authn_section);
+    if (osf->authz_section) free(osf->authz_section);
+    if (osf->section) free(osf->section);
     free(osf->host_id);
     free(osf->base_path);
     free(osf->file_path);
@@ -4191,11 +4236,13 @@ lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, 
     char *atype, *asection;
     int i, err;
 
-    if (section == NULL) section = "osfile";
+    if (section == NULL) section = osf_default_options.section;
 
     tbx_type_malloc_clear(os, lio_object_service_fn_t, 1);
     tbx_type_malloc_clear(osf, lio_osfile_priv_t, 1);
     os->priv = (void *)osf;
+
+    osf->section = strdup(section);
 
     osf->tpc = lio_lookup_service(ess, ESS_RUNNING, ESS_TPC_UNLIMITED);
     osf->base_path = NULL;
@@ -4209,16 +4256,16 @@ lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, 
         osf->max_copy = 1024*1024;
         osf->hardlink_dir_size = 256;
     } else {
-        osf->base_path = tbx_inip_get_string(fd, section, "base_path", "./osfile");
-        osf->internal_lock_size = tbx_inip_get_integer(fd, section, "lock_table_size", 200);
-        osf->max_copy = tbx_inip_get_integer(fd, section, "max_copy", 1024*1024);
-        osf->hardlink_dir_size = tbx_inip_get_integer(fd, section, "hardlink_dir_size", 256);
-        asection = tbx_inip_get_string(fd, section, "authz", NULL);
+        osf->base_path = tbx_inip_get_string(fd, section, "base_path", osf_default_options.base_path);
+        osf->internal_lock_size = tbx_inip_get_integer(fd, section, "lock_table_size", osf_default_options.internal_lock_size);
+        osf->max_copy = tbx_inip_get_integer(fd, section, "max_copy", osf_default_options.max_copy);
+        osf->hardlink_dir_size = tbx_inip_get_integer(fd, section, "hardlink_dir_size", osf_default_options.hardlink_dir_size);
+        asection = tbx_inip_get_string(fd, section, "authz", osf_default_options.authn_section);
+        osf->authz_section = asection;
         atype = (asection == NULL) ? strdup(OSAZ_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", OSAZ_TYPE_FAKE);
         osaz_create = lio_lookup_service(ess, OSAZ_AVAILABLE, atype);
         osf->osaz = (*osaz_create)(ess, fd, asection, os);
         free(atype);
-        free(asection);
         if (osf->osaz == NULL) {
             free(osf->base_path);
             free(osf);
@@ -4226,12 +4273,12 @@ lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, 
             return(NULL);
         }
 
-        asection = tbx_inip_get_string(fd, section, "authn", NULL);
+        asection = tbx_inip_get_string(fd, section, "authn", osf_default_options.authn_section);
+        osf->authn_section = asection;
         atype = (asection == NULL) ? strdup(AUTHN_TYPE_FAKE) : tbx_inip_get_string(fd, asection, "type", AUTHN_TYPE_FAKE);
         authn_create = lio_lookup_service(ess, AUTHN_AVAILABLE, atype);
         osf->authn = (*authn_create)(ess, fd, asection);
         free(atype);
-        free(asection);
         if (osf->osaz == NULL) {
             free(osf->base_path);
             osaz_destroy(osf->osaz);
@@ -4337,6 +4384,7 @@ lio_object_service_fn_t *object_service_file_create(lio_service_manager_t *ess, 
 
     os->type = OS_TYPE_FILE;
 
+    os->print_running_config = osfile_print_running_config;
     os->destroy_service = osfile_destroy;
     os->cred_init = osfile_cred_init;
     os->cred_destroy = osfile_cred_destroy;

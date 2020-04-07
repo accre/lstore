@@ -39,6 +39,7 @@
 #include <tbx/log.h>
 #include <tbx/network.h>
 #include <tbx/random.h>
+#include <tbx/siginfo.h>
 #include <tbx/transfer_buffer.h>
 #include <tbx/type_malloc.h>
 #include <time.h>
@@ -725,6 +726,7 @@ int main(int argc, char **argv)
     gop_init_opque_system();  //** Initialize GOP.  This needs to be done after any fork() call
     tbx_random_startup();
     tbx_set_log_level(-1);
+    tbx_siginfo_install(strdup("/tmp/lio_info.txt"), SIGUSR1);
 
     ic = ibp_context_create();  //** Initialize IBP
 
@@ -852,9 +854,9 @@ int main(int argc, char **argv)
     //*** Get thread count ***
     nthreads = atoi(argv[i]);
     if (nthreads <= 0) {
-        nthreads = ibp_context_max_depot_threads_get(ic);
+        nthreads = ibp_context_max_host_conn_get(ic);
     } else {
-        ibp_context_max_depot_threads_set(ic, nthreads);
+        ibp_context_max_host_conn_set(ic, nthreads);
     }
     i++;
 
@@ -1166,6 +1168,9 @@ int main(int argc, char **argv)
     printf("Final network connection counter: %d\n", tbx_network_counter(NULL));
 
     ibp_context_destroy(ic);  //** Shutdown IBP
+
+    tbx_siginfo_shutdown();
+    gop_shutdown();
 
     return(0);
 }

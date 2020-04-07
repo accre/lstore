@@ -54,7 +54,7 @@ typedef gop_op_generic_t *(*lio_rs_data_request_fn_t)(lio_resource_service_fn_t 
 typedef rs_query_t *(*lio_rs_query_parse_fn_t)(lio_resource_service_fn_t *arg, char *value);
 typedef char *(*lio_rs_query_print_fn_t)(lio_resource_service_fn_t *arg, rs_query_t *q);
 typedef void (*lio_rs_destroy_service_fn_t)(lio_resource_service_fn_t *rs);
- 
+typedef void (*lio_rs_print_running_config_fn_t)(lio_resource_service_fn_t *rs, FILE *fd, int print_section_heading);
 // FIXME:leaky
 typedef struct lio_rsq_base_ele_t lio_rsq_base_ele_t;
 typedef struct lio_rsq_base_t lio_rsq_base_t;
@@ -111,6 +111,7 @@ struct lio_resource_service_fn_t {
     lio_rs_query_parse_fn_t query_parse;
     lio_rs_query_print_fn_t query_print;
     lio_rs_destroy_service_fn_t destroy_service;
+    lio_rs_print_running_config_fn_t print_running_config;
 };
 
 struct lio_rid_change_entry_t {

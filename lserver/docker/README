@@ -1,0 +1,25 @@
+Directions:
+
+apt-get install docker.io
+
+#if updating the packages replace <this-folder>/repo/packages with the repo/packages appropriate for the distro (Ubuntu Xenial at the moment)
+# ...generated from building the lstore packages from source followed by update-repo.sh 
+
+mkdir /vol/
+mkdir or symlink the following folders /vol/log, /vol/shared, /vol/osfile
+
+#if starting a new lstore namespace:
+pushd /vol; <this-folder>/init_osfile.sh; popd
+
+cd lstore-docker      (this folder)
+docker build -t <name:tag> ./
+# watch output, check for errors
+# follow directions at end of build output about running the new container
+# test! For example:
+lio_mkdir @:/foo
+lio_ls @:/
+
+exit interactive docker session with ctrl+p,ctrl+q
+
+reattach with "docker attach <container>" or better yet utilize the ssh server this container starts onport 2222:
+ssh -p 2222 root@localhost

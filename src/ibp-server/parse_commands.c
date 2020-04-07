@@ -40,12 +40,12 @@
 
 int get_command_timeout(ibp_task_t *task, char **bstate)
 {
-   apr_time_t t; 
+   apr_time_t t;
    int fin;
 
    t = 0; sscanf(tbx_stk_string_token(NULL, " ", bstate, &fin), TT, &t);
    task->cmd_timeout = apr_time_now() + apr_time_make(t, 0);
-   if (t == 0) {        
+   if (t == 0) {
       log_printf(1, "get_command_timeout: Bad timeout value " TT " changing to 2 for LoRS compatibility\n", t);
       task->cmd_timeout = apr_time_now() + apr_time_make(2, 0);
 //      log_printf(1, "get_command_timeout: Bad timeout value " TT "\n", t);
@@ -1003,6 +1003,8 @@ int read_read(ibp_task_t *task, char **bstate)
        case IBP_PULL:
        case IBP_PULL_CHKSUM:
           r->transfer_dir = IBP_PULL;
+          //** Line below tells the compiler to ignore the fall through
+          //@fallthrough@
        case IBP_PUSH:
        case IBP_PUSH_CHKSUM:
           get_remote_cap = 1;

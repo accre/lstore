@@ -1,0 +1,4 @@
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin 
+DOCKER_NAME=lserver
+30 0-23/12 * * * root /usr/local/bin/warmer_run.sh
+
